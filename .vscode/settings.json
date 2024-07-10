@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "*.html": "html",
+        "iostream": "cpp",
+        "cmath": "cpp",
+        "ostream": "cpp",
+        "stdexcept": "cpp",
+        "iosfwd": "cpp",
+        "cstdlib": "cpp",
+        "ios": "cpp",
+        "atomic": "cpp"
+    },
+    "C_Cpp.default.compilerPath": "/usr/bin/g++"
+}
