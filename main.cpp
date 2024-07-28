@@ -3,6 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <random>
+#include "helpers/matrix.h"
 
 class LorenzAttractor {
 public:
@@ -24,7 +25,7 @@ public:
         : window(sf::VideoMode(width, height), title),
           scale(14.0f),
           offsetX(0.0f),
-          offsetY(30.0f) {
+          offsetY(25.0f) {
         window.setFramerateLimit(60);
     }
 
@@ -76,6 +77,7 @@ private:
                       std::vector<std::vector<sf::Vertex>>& trails, size_t maxTrailSize) {
         for (size_t i = 0; i < points.size(); ++i) {
             points[i] = lorenz.step(points[i]);
+            // get scaled coordinates
             sf::Vector2f screenPos = worldToScreen(points[i][0], points[i][2]);
             
             trails[i].push_back(sf::Vertex(screenPos, sf::Color::Cyan));
@@ -100,8 +102,8 @@ private:
         }
         
         // Draw current points
-        sf::CircleShape point(2);
-        point.setFillColor(sf::Color(0, 255, 255, 128));
+        sf::CircleShape point(1);
+        point.setFillColor(sf::Color(0, 255, 255, 200));
         for (const auto& p : points) {
             sf::Vector2f screenPos = worldToScreen(p[0], p[2]);
             point.setPosition(screenPos - sf::Vector2f(point.getRadius(), point.getRadius()));
@@ -120,7 +122,7 @@ private:
 
 int main() {
     LorenzAttractor lorenz(10.0f, 28.0f, 8.0f / 3.0f, 0.004f);
-    Visualization vis(1920, 1080, "Lorenz Attractor");
+    Visualization vis(1080, 800, "Lorenz Attractor");
     vis.run(lorenz);
     return 0;
 }
