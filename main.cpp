@@ -23,9 +23,10 @@ class Visualization {
 public:
     Visualization(int width, int height, const std::string& title)
         : window(sf::VideoMode(width, height), title),
-          scale(14.0f),
-          offsetX(0.0f),
-          offsetY(25.0f) {
+          scale(15.0f),
+          offsetX(100.0f),
+          offsetY(0.0f),
+          angle(M_PI / 2) {
         window.setFramerateLimit(60);
     }
 
@@ -45,6 +46,7 @@ private:
     sf::RenderWindow window;
     float scale;
     float offsetX, offsetY;
+    float angle;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -77,15 +79,35 @@ private:
                       std::vector<std::vector<sf::Vertex>>& trails, size_t maxTrailSize) {
         for (size_t i = 0; i < points.size(); ++i) {
             points[i] = lorenz.step(points[i]);
-            // get scaled coordinates
-            sf::Vector2f screenPos = worldToScreen(points[i][0], points[i][2]);
+            
+            Matrix rotation_y(3, 3);
+            rotation_y(0, 0) = cos(angle); rotation_y(0, 2) = -sin(angle);
+            rotation_y(1, 1) = 1;
+            rotation_y(2, 0) = sin(angle); rotation_y(2, 2) = cos(angle);
+
+            Matrix point(3, 1);
+            point(0, 0) = points[i][0];
+            point(1, 0) = points[i][1];
+            point(2, 0) = points[i][2];
+
+            Matrix rotated_2d = matrix_multiplication(rotation_y, point);
+
+            Matrix projection_matrix(2, 3);
+            projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
+            projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
+
+            Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
+
+            float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
+            float screenY = projected2d(1, 0) * scale + window.getSize().y / 2.0f + offsetY;
+
+            sf::Vector2f screenPos(screenX, screenY);
             
             trails[i].push_back(sf::Vertex(screenPos, sf::Color::Cyan));
             if (trails[i].size() > maxTrailSize) {
                 trails[i].erase(trails[i].begin());
             }
 
-            // Fade the trail
             for (size_t j = 0; j < trails[i].size(); ++j) {
                 float alpha = static_cast<float>(j) / trails[i].size() * 255.0f;
                 trails[i][j].color.a = static_cast<sf::Uint8>(alpha);
@@ -96,33 +118,45 @@ private:
     void render(const std::vector<std::vector<float>>& points, const std::vector<std::vector<sf::Vertex>>& trails) {
         window.clear(sf::Color::Black);
         
-        // Draw trails
         for (const auto& trail : trails) {
             window.draw(&trail[0], trail.size(), sf::PrimitiveType::LineStrip);
         }
         
-        // Draw current points
         sf::CircleShape point(1);
         point.setFillColor(sf::Color(0, 255, 255, 200));
         for (const auto& p : points) {
-            sf::Vector2f screenPos = worldToScreen(p[0], p[2]);
-            point.setPosition(screenPos - sf::Vector2f(point.getRadius(), point.getRadius()));
+            Matrix rotation_y(3, 3);
+            rotation_y(0, 0) = cos(angle); rotation_y(0, 2) = -sin(angle);
+            rotation_y(1, 1) = 1;
+            rotation_y(2, 0) = sin(angle); rotation_y(2, 2) = cos(angle);
+
+            Matrix point_matrix(3, 1);
+            point_matrix(0, 0) = p[0];
+            point_matrix(1, 0) = p[1];
+            point_matrix(2, 0) = p[2];
+
+            Matrix rotated_2d = matrix_multiplication(rotation_y, point_matrix);
+
+            Matrix projection_matrix(2, 3);
+            projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
+            projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
+
+            Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
+
+            float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
+            float screenY = projected2d(1, 0) * scale + window.getSize().y / 2.0f + offsetY;
+
+            point.setPosition(screenX - point.getRadius(), screenY - point.getRadius());
             window.draw(point);
         }
         
         window.display();
     }
-
-    sf::Vector2f worldToScreen(float x, float y) const {
-        float screenX = (x + offsetX) * scale + window.getSize().x / 2.0f;
-        float screenY = (-y + offsetY) * scale + window.getSize().y / 2.0f;
-        return sf::Vector2f(screenX, screenY);
-    }
 };
 
 int main() {
     LorenzAttractor lorenz(10.0f, 28.0f, 8.0f / 3.0f, 0.004f);
-    Visualization vis(1080, 800, "Lorenz Attractor");
+    Visualization vis(1920, 1080, "Lorenz Attractor");
     vis.run(lorenz);
     return 0;
 }
