@@ -1,9 +1,13 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <vector>
 #include <cmath>
 #include <random>
 #include "helpers/matrix.h"
+#include <RtAudio.h>
+#include <fftw3.h>
+#include <filesystem>
 
 class LorenzAttractor {
 public:
@@ -19,21 +23,42 @@ public:
     }
 };
 
+class AudioPlayer {
+public:
+    AudioPlayer() : music() {}
+
+    bool loadAndPlay(const std::string& directory) {
+        for (const auto& entry : std::__fs::filesystem::directory_iterator(directory)) {
+            if (entry.path().extension() == ".mp3") {
+                if (music.openFromFile(entry.path().string())) {
+                    music.play();
+                    return true;
+                }
+                break; // Only play the first MP3 file
+            }
+        }
+        return false;
+    }
+
+private:
+    sf::Music music;
+};
+
 class Visualization {
 public:
     Visualization(int width, int height, const std::string& title)
-        : window(sf::VideoMode(width, height), title),
-          scale(15.0f),
-          offsetX(100.0f),
-          offsetY(0.0f),
-          angle(M_PI / 2) {
+        : window(sf::VideoMode::getFullscreenModes()[0], title, sf::Style::Fullscreen),
+        scale(18.0f),
+        offsetX(0.0f),
+        offsetY(480.0f),
+        angle(M_PI / 2) {
         window.setFramerateLimit(60);
     }
 
     void run(const LorenzAttractor& lorenz) {
         std::vector<std::vector<float>> points = initializePoints();
         std::vector<std::vector<sf::Vertex>> trails(points.size());
-        const size_t maxTrailSize = 50;
+        const size_t maxTrailSize = 30;
 
         while (window.isOpen()) {
             handleEvents();
@@ -69,7 +94,7 @@ private:
         sf::Event event;
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed || 
-                (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Q)) {
+                (event.type == sf::Event::KeyPressed && (event.key.code == sf::Keyboard::Q || event.key.code == sf::Keyboard::Escape || event.key.code == sf::Keyboard::BackSpace))) {
                 window.close();
             }
         }
@@ -93,8 +118,8 @@ private:
             Matrix rotated_2d = matrix_multiplication(rotation_y, point);
 
             Matrix projection_matrix(2, 3);
-            projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
-            projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
+            projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
+            projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
 
             Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
@@ -138,8 +163,8 @@ private:
             Matrix rotated_2d = matrix_multiplication(rotation_y, point_matrix);
 
             Matrix projection_matrix(2, 3);
-            projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
-            projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
+            projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
+            projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
 
             Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
@@ -155,8 +180,13 @@ private:
 };
 
 int main() {
-    LorenzAttractor lorenz(10.0f, 28.0f, 8.0f / 3.0f, 0.004f);
-    Visualization vis(1920, 1080, "Lorenz Attractor");
+    AudioPlayer audioPlayer;
+    if (!audioPlayer.loadAndPlay("./audio/")) {
+        std::cerr << "Failed to load and play audio file." << std::endl;
+    }
+    sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
+    LorenzAttractor lorenz(11.0f, 30.0f, 10.0f / 3.0f, 0.0015f);
+    Visualization vis(desktopMode.width, desktopMode.height, "Lorenz Attractor");
     vis.run(lorenz);
     return 0;
 }
