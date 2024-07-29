@@ -4,10 +4,10 @@
 #include <vector>
 #include <cmath>
 #include <random>
+#include <filesystem>
 #include "helpers/matrix.h"
 #include <RtAudio.h>
 #include <fftw3.h>
-#include <filesystem>
 
 class LorenzAttractor {
 public:
@@ -25,13 +25,16 @@ public:
 
 class AudioPlayer {
 public:
-    AudioPlayer() : music() {}
+    AudioPlayer() : sound(), buffer(), samples(), sampleRate(0), currentAmplitude(0.0f) {}
 
     bool loadAndPlay(const std::string& directory) {
         for (const auto& entry : std::__fs::filesystem::directory_iterator(directory)) {
             if (entry.path().extension() == ".mp3") {
-                if (music.openFromFile(entry.path().string())) {
-                    music.play();
+                if (buffer.loadFromFile(entry.path().string())) {
+                    samples = buffer.getSamples();
+                    sampleRate = buffer.getSampleRate();
+                    sound.setBuffer(buffer);
+                    sound.play();
                     return true;
                 }
                 break; // Only play the first MP3 file
@@ -40,18 +43,45 @@ public:
         return false;
     }
 
+    float getAmplitude() {
+        // Analyze the samples to get the amplitude
+        size_t sampleCount = buffer.getSampleCount();
+        if (sampleCount == 0) return 0.0f;
+
+        float amplitudeSum = 0.0f;
+        size_t samplePos = sound.getPlayingOffset().asSeconds() * sampleRate * 2; // 2 channels (stereo)
+
+        for (size_t i = samplePos; i < samplePos + 2048 && i < sampleCount; ++i) {
+            amplitudeSum += std::abs(samples[i]);
+        }
+
+        // Normalize amplitude
+        float amplitude = amplitudeSum / 2048.0f;
+        currentAmplitude = amplitude;
+        return amplitude;
+    }
+
+    float getCurrentAmplitude() const {
+        return currentAmplitude;
+    }
+
 private:
-    sf::Music music;
+    sf::SoundBuffer buffer;
+    sf::Sound sound;
+    const sf::Int16* samples;
+    unsigned int sampleRate;
+    float currentAmplitude;
 };
 
 class Visualization {
 public:
-    Visualization(int width, int height, const std::string& title)
+    Visualization(int width, int height, const std::string& title, AudioPlayer& audioPlayer)
         : window(sf::VideoMode::getFullscreenModes()[0], title, sf::Style::Fullscreen),
-        scale(18.0f),
-        offsetX(0.0f),
-        offsetY(480.0f),
-        angle(M_PI / 2) {
+          scale(18.0f),
+          offsetX(0.0f),
+          offsetY(480.0f),
+          angle(M_PI / 2),
+          audioPlayer(audioPlayer) {
         window.setFramerateLimit(60);
     }
 
@@ -62,7 +92,14 @@ public:
 
         while (window.isOpen()) {
             handleEvents();
-            updatePoints(lorenz, points, trails, maxTrailSize);
+            float amplitude = audioPlayer.getAmplitude();
+            if(amplitude > 800.0f){
+                amplitude = 800.0f;
+            }
+            float speedFactor = 0.001f + 0.000003f * amplitude; // Adjust speed based on amplitude
+            std::cout << "Amplitude: " << amplitude << std::endl;
+            LorenzAttractor adjustedLorenz(lorenz.sigma, lorenz.rho, lorenz.beta, speedFactor);
+            updatePoints(adjustedLorenz, points, trails, maxTrailSize);
             render(points, trails);
         }
     }
@@ -72,6 +109,7 @@ private:
     float scale;
     float offsetX, offsetY;
     float angle;
+    AudioPlayer& audioPlayer;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -186,7 +224,7 @@ int main() {
     }
     sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
     LorenzAttractor lorenz(11.0f, 30.0f, 10.0f / 3.0f, 0.0015f);
-    Visualization vis(desktopMode.width, desktopMode.height, "Lorenz Attractor");
+    Visualization vis(desktopMode.width, desktopMode.height, "Lorenz Attractor", audioPlayer);
     vis.run(lorenz);
     return 0;
 }
