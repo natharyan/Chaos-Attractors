@@ -27,17 +27,15 @@ class AudioPlayer {
 public:
     AudioPlayer() : sound(), buffer(), samples(), sampleRate(0), currentAmplitude(0.0f) {}
 
-    bool loadAndPlay(const std::string& directory) {
-        for (const auto& entry : std::__fs::filesystem::directory_iterator(directory)) {
-            if (entry.path().extension() == ".mp3") {
-                if (buffer.loadFromFile(entry.path().string())) {
-                    samples = buffer.getSamples();
-                    sampleRate = buffer.getSampleRate();
-                    sound.setBuffer(buffer);
-                    sound.play();
-                    return true;
-                }
-                break; // Only play the first MP3 file
+    bool loadAndPlay(const std::string& path) {
+        std::__fs::filesystem::path fsPath(path);
+        if (fsPath.extension() == ".mp3") {
+            if (buffer.loadFromFile(fsPath.string())) {
+                samples = buffer.getSamples();
+                sampleRate = buffer.getSampleRate();
+                sound.setBuffer(buffer);
+                sound.play();
+                return true;
             }
         }
         return false;
@@ -82,8 +80,17 @@ public:
           offsetY(480.0f),
           angle(M_PI / 2),
           audioPlayer(audioPlayer) {
-        window.setFramerateLimit(60);
-    }
+
+            if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
+                std::cerr << "Error loading font" << std::endl;
+            }
+            titletext.setFont(font);
+            titletext.setCharacterSize(24);
+            titletext.setFillColor(sf::Color::White);
+            titletext.setString(title);
+            titletext.setPosition(10.f, 10.f);
+            window.setFramerateLimit(60);
+        }
 
     void run(const LorenzAttractor& lorenz) {
         std::vector<std::vector<float>> points = initializePoints();
@@ -110,6 +117,8 @@ private:
     float offsetX, offsetY;
     float angle;
     AudioPlayer& audioPlayer;
+    sf::Font font;
+    sf::Text titletext;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -166,7 +175,7 @@ private:
 
             sf::Vector2f screenPos(screenX, screenY);
             
-            trails[i].push_back(sf::Vertex(screenPos, sf::Color::Cyan));
+            trails[i].push_back(sf::Vertex(screenPos, getColorForAmplitude(audioPlayer.getCurrentAmplitude())));
             if (trails[i].size() > maxTrailSize) {
                 trails[i].erase(trails[i].begin());
             }
@@ -177,16 +186,26 @@ private:
             }
         }
     }
+    sf::Color getColorForAmplitude(float amplitude) {
+        // Normalize amplitude to range 0 to 1
+        float normalizedAmplitude = std::min(static_cast<int>(amplitude)%7000 / 7000.0f, 1.0f);
+        // gradient from blue (low amplitude) to red (high amplitude)
+        int red = static_cast<int>(normalizedAmplitude * 255);
+        int green = 0;
+        int blue = static_cast<int>(std::abs(((1 - normalizedAmplitude) * 255)));
+        return sf::Color(red, green, blue);
+    }
 
     void render(const std::vector<std::vector<float>>& points, const std::vector<std::vector<sf::Vertex>>& trails) {
         window.clear(sf::Color::Black);
-        
+
+        // Draw trails with amplitude-based colors
         for (const auto& trail : trails) {
             window.draw(&trail[0], trail.size(), sf::PrimitiveType::LineStrip);
         }
-        
-        sf::CircleShape point(1);
-        point.setFillColor(sf::Color(0, 255, 255, 200));
+
+        // Draw points with amplitude-based colors
+        sf::CircleShape pointShape(1);
         for (const auto& p : points) {
             Matrix rotation_y(3, 3);
             rotation_y(0, 0) = cos(angle); rotation_y(0, 2) = -sin(angle);
@@ -209,17 +228,19 @@ private:
             float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
             float screenY = projected2d(1, 0) * scale + window.getSize().y / 2.0f + offsetY;
 
-            point.setPosition(screenX - point.getRadius(), screenY - point.getRadius());
-            window.draw(point);
+            pointShape.setPosition(screenX - pointShape.getRadius(), screenY - pointShape.getRadius());
+            pointShape.setFillColor(getColorForAmplitude(audioPlayer.getCurrentAmplitude()));
+            window.draw(pointShape);
         }
-        
+
+        window.draw(titletext);
         window.display();
     }
 };
 
 int main() {
     AudioPlayer audioPlayer;
-    if (!audioPlayer.loadAndPlay("./audio/")) {
+    if (!audioPlayer.loadAndPlay("audio/Clair De Lune 2009.mp3")) {
         std::cerr << "Failed to load and play audio file." << std::endl;
     }
     sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
