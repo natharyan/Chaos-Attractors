@@ -78,7 +78,9 @@ public:
           scale(18.0f),
           offsetX(0.0f),
           offsetY(480.0f),
-          angle(M_PI / 2),
+          angleIndex(0),
+          angles{ M_PI / 2, 0, M_PI, 3 * M_PI / 2},
+          offsetYs{480, 60, 60, 480},
           audioPlayer(audioPlayer) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
@@ -118,7 +120,9 @@ private:
     sf::RenderWindow window;
     float scale;
     float offsetX, offsetY;
-    float angle;
+    int angleIndex;
+    float angles[4];
+    float offsetYs[4];
     AudioPlayer& audioPlayer;
     sf::Font font;
     sf::Text titletext;
@@ -146,6 +150,13 @@ private:
             if (event.type == sf::Event::Closed || 
                 (event.type == sf::Event::KeyPressed && (event.key.code == sf::Keyboard::Q || event.key.code == sf::Keyboard::Escape || event.key.code == sf::Keyboard::BackSpace))) {
                 window.close();
+            } else if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Right) {
+                    angleIndex = (angleIndex + 1) % 4;
+                } else if (event.key.code == sf::Keyboard::Left) {
+                    angleIndex = (angleIndex - 1 + 4) % 4;
+                }
+                offsetY = offsetYs[angleIndex];
             }
         }
     }
@@ -156,9 +167,9 @@ private:
             points[i] = lorenz.step(points[i]);
             
             Matrix rotation_y(3, 3);
-            rotation_y(0, 0) = cos(angle); rotation_y(0, 2) = -sin(angle);
+            rotation_y(0, 0) = cos(angles[angleIndex]); rotation_y(0, 2) = -sin(angles[angleIndex]);
             rotation_y(1, 1) = 1;
-            rotation_y(2, 0) = sin(angle); rotation_y(2, 2) = cos(angle);
+            rotation_y(2, 0) = sin(angles[angleIndex]); rotation_y(2, 2) = cos(angles[angleIndex]);
 
             Matrix point(3, 1);
             point(0, 0) = points[i][0];
@@ -218,9 +229,9 @@ private:
         sf::CircleShape pointShape(1);
         for (const auto& p : points) {
             Matrix rotation_y(3, 3);
-            rotation_y(0, 0) = cos(angle); rotation_y(0, 2) = -sin(angle);
+            rotation_y(0, 0) = cos(angles[angleIndex]); rotation_y(0, 2) = -sin(angles[angleIndex]);
             rotation_y(1, 1) = 1;
-            rotation_y(2, 0) = sin(angle); rotation_y(2, 2) = cos(angle);
+            rotation_y(2, 0) = sin(angles[angleIndex]); rotation_y(2, 2) = cos(angles[angleIndex]);
 
             Matrix point_matrix(3, 1);
             point_matrix(0, 0) = p[0];

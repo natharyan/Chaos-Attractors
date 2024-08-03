@@ -35,6 +35,7 @@ public:
                 samples = buffer.getSamples();
                 sampleRate = buffer.getSampleRate();
                 sound.setBuffer(buffer);
+                sound.setLoop(true);  // Enable looping
                 sound.play();
                 return true;
             }
@@ -70,6 +71,7 @@ private:
     float currentAmplitude;
 };
 
+
 class Visualization {
 public:
     Visualization(int width, int height, const std::string& title, AudioPlayer& audioPlayer)
@@ -77,6 +79,7 @@ public:
           scale(330.0f),
           offsetX(0.0f),
           offsetY(0.0f),
+          //angle(M_PI / 2),
           angle(0),
           audioPlayer(audioPlayer) {
 
@@ -102,10 +105,8 @@ public:
             if(amplitude > 800.0f){
                 amplitude = 800.0f;
             }
-            float speedFactor = aizawa.dt + 0.000007f * amplitude;
-            if(speedFactor > 0.007f){
-                speedFactor = 0.007f;
-            }
+            float speedFactor = aizawa.dt + 0.000005f * amplitude;
+
             std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
             AizawaAttractor adjustedAizawa(aizawa.a, aizawa.b, aizawa.c, aizawa.d, aizawa.e, aizawa.f, speedFactor);
             updatePoints(adjustedAizawa, points, trails, maxTrailSize);
@@ -246,11 +247,11 @@ private:
 
 int main() {
     AudioPlayer audioPlayer;
-    if (!audioPlayer.loadAndPlay("audio/Clair De Lune 2009.mp3")) {
+    if (!audioPlayer.loadAndPlay("audio/Debussy Girl with Flaxen Hair.mp3")) {
         std::cerr << "Failed to load and play audio file." << std::endl;
     }
     sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
-    AizawaAttractor aizawa(0.95f, 0.7f, 0.6f, 3.5f, 0.25f, 0.1f, 0.3f);
+    AizawaAttractor aizawa(0.95f, 0.7f, 0.6f, 3.5f, 0.25f, 0.1f, 0.0015f);
     Visualization vis(desktopMode.width, desktopMode.height, "Aizawa Attractor", audioPlayer);
     vis.run(aizawa);
     return 0;
