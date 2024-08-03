@@ -80,8 +80,9 @@ public:
           offsetY(480.0f),
           angleIndex(0),
           angles{ M_PI / 2, 0, M_PI, 3 * M_PI / 2},
-          offsetYs{480, 60, 60, 480},
-          audioPlayer(audioPlayer) {
+          offsetYs{480, 60, 60, -480},
+          audioPlayer(audioPlayer),
+          isTransitioning(false), transitionFrames(0) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -126,6 +127,8 @@ private:
     AudioPlayer& audioPlayer;
     sf::Font font;
     sf::Text titletext;
+    bool isTransitioning;
+    int transitionFrames;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -157,6 +160,8 @@ private:
                     angleIndex = (angleIndex - 1 + 4) % 4;
                 }
                 offsetY = offsetYs[angleIndex];
+                isTransitioning = true;
+                transitionFrames = 35;
             }
         }
     }
@@ -218,43 +223,51 @@ private:
     }
 
     void render(const std::vector<std::vector<float>>& points, const std::vector<std::vector<sf::Vertex>>& trails) {
-        window.clear(sf::Color::Black);
+        if (isTransitioning) {
+            window.clear(sf::Color::Black);
+            transitionFrames--;
+            if (transitionFrames <= 0) {
+                isTransitioning = false;
+            }
+        } else {
+            window.clear(sf::Color::Black);
 
-        // Draw trails with amplitude-based colors
-        for (const auto& trail : trails) {
-            window.draw(&trail[0], trail.size(), sf::PrimitiveType::LineStrip);
+            // Draw trails with amplitude-based colors
+            for (const auto& trail : trails) {
+                window.draw(&trail[0], trail.size(), sf::PrimitiveType::LineStrip);
+            }
+
+            // Draw points with amplitude-based colors
+            sf::CircleShape pointShape(1);
+            for (const auto& p : points) {
+                Matrix rotation_y(3, 3);
+                rotation_y(0, 0) = cos(angles[angleIndex]); rotation_y(0, 2) = -sin(angles[angleIndex]);
+                rotation_y(1, 1) = 1;
+                rotation_y(2, 0) = sin(angles[angleIndex]); rotation_y(2, 2) = cos(angles[angleIndex]);
+
+                Matrix point_matrix(3, 1);
+                point_matrix(0, 0) = p[0];
+                point_matrix(1, 0) = p[1];
+                point_matrix(2, 0) = p[2];
+
+                Matrix rotated_2d = matrix_multiplication(rotation_y, point_matrix);
+
+                Matrix projection_matrix(2, 3);
+                projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
+                projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
+
+                Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
+
+                float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
+                float screenY = projected2d(1, 0) * scale + window.getSize().y / 2.0f + offsetY;
+
+                pointShape.setPosition(screenX - pointShape.getRadius(), screenY - pointShape.getRadius());
+                pointShape.setFillColor(getColorForAmplitude(audioPlayer.getCurrentAmplitude()));
+                window.draw(pointShape);
+            }
+
+            window.draw(titletext);
         }
-
-        // Draw points with amplitude-based colors
-        sf::CircleShape pointShape(1);
-        for (const auto& p : points) {
-            Matrix rotation_y(3, 3);
-            rotation_y(0, 0) = cos(angles[angleIndex]); rotation_y(0, 2) = -sin(angles[angleIndex]);
-            rotation_y(1, 1) = 1;
-            rotation_y(2, 0) = sin(angles[angleIndex]); rotation_y(2, 2) = cos(angles[angleIndex]);
-
-            Matrix point_matrix(3, 1);
-            point_matrix(0, 0) = p[0];
-            point_matrix(1, 0) = p[1];
-            point_matrix(2, 0) = p[2];
-
-            Matrix rotated_2d = matrix_multiplication(rotation_y, point_matrix);
-
-            Matrix projection_matrix(2, 3);
-            projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
-            projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
-
-            Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
-
-            float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
-            float screenY = projected2d(1, 0) * scale + window.getSize().y / 2.0f + offsetY;
-
-            pointShape.setPosition(screenX - pointShape.getRadius(), screenY - pointShape.getRadius());
-            pointShape.setFillColor(getColorForAmplitude(audioPlayer.getCurrentAmplitude()));
-            window.draw(pointShape);
-        }
-
-        window.draw(titletext);
         window.display();
     }
 };
