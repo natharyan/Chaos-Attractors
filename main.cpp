@@ -103,8 +103,11 @@ public:
             if(amplitude > 800.0f){
                 amplitude = 800.0f;
             }
-            float speedFactor = 0.001f + 0.000003f * amplitude; // Adjust speed based on amplitude
-            std::cout << "Amplitude: " << amplitude << std::endl;
+            float speedFactor = lorenz.dt + 0.000007f * amplitude;
+            if(speedFactor > 0.007f){
+                speedFactor = 0.007f;
+            }
+            std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
             LorenzAttractor adjustedLorenz(lorenz.sigma, lorenz.rho, lorenz.beta, speedFactor);
             updatePoints(adjustedLorenz, points, trails, maxTrailSize);
             render(points, trails);
@@ -186,14 +189,21 @@ private:
             }
         }
     }
+
+    sf::Color lerpColor(const sf::Color& start, const sf::Color& end, float t) {
+        return sf::Color(
+            static_cast<sf::Uint8>(start.r + t * (end.r - start.r)),
+            static_cast<sf::Uint8>(start.g + t * (end.g - start.g)),
+            static_cast<sf::Uint8>(start.b + t * (end.b - start.b))
+        );
+    }
+
     sf::Color getColorForAmplitude(float amplitude) {
         // Normalize amplitude to range 0 to 1
-        float normalizedAmplitude = std::min(static_cast<int>(amplitude)%7000 / 7000.0f, 1.0f);
-        // gradient from blue (low amplitude) to red (high amplitude)
-        int red = static_cast<int>(normalizedAmplitude * 255);
-        int green = 0;
-        int blue = static_cast<int>(std::abs(((1 - normalizedAmplitude) * 255)));
-        return sf::Color(red, green, blue);
+        float normalizedAmplitude = std::min(amplitude / 8000.0f, 1.0f);
+        sf::Color startColor(0, 0, 255); // Blue for low amplitude
+        sf::Color endColor(255, 0, 0);   // Red for high amplitude
+        return lerpColor(startColor, endColor, normalizedAmplitude);
     }
 
     void render(const std::vector<std::vector<float>>& points, const std::vector<std::vector<sf::Vertex>>& trails) {
@@ -240,11 +250,11 @@ private:
 
 int main() {
     AudioPlayer audioPlayer;
-    if (!audioPlayer.loadAndPlay("audio/Clair De Lune 2009.mp3")) {
+    if (!audioPlayer.loadAndPlay("audio/Dances for Harp and Orchestra Danse profane.mp3")) {
         std::cerr << "Failed to load and play audio file." << std::endl;
     }
     sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
-    LorenzAttractor lorenz(11.0f, 30.0f, 10.0f / 3.0f, 0.0015f);
+    LorenzAttractor lorenz(11.0f, 30.0f, 10.0f / 3.0f, 0.0005f);
     Visualization vis(desktopMode.width, desktopMode.height, "Lorenz Attractor", audioPlayer);
     vis.run(lorenz);
     return 0;
