@@ -9,10 +9,10 @@ FFTW_PATH = /opt/homebrew/Cellar/fftw/3.3.10_1
 
 # Replace "src" with the name of the folder where all your cpp code is
 # cppFileNames := $(shell find . -maxdepth 1 -type f -name "*.cpp")
-cppFileNames := $(shell find . -maxdepth 1 -type f -name "main.cpp")
+cppFileNames := $(shell find ./src/ -maxdepth 1 -type f -name "main.cpp")
 
 all: compile
 
 compile:	
 	mkdir -p bin
-	g++ -std=c++14 $(cppFileNames) ./helpers/matrix.cpp -I$(SFML_PATH)/include -I$(RTAUDIO_PATH)/include/rtaudio -I$(FFTW_PATH)/include -o bin/app -L$(SFML_PATH)/lib -L$(RTAUDIO_PATH)/lib -L$(FFTW_PATH)/lib -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network -lrtaudio -lfftw3 -lfftw3f
+	g++ -std=c++14 $(cppFileNames) ./src/includes/matrix.cpp ./src/includes/attractors/lorenz.cpp -I$(SFML_PATH)/include -I$(RTAUDIO_PATH)/include/rtaudio -I$(FFTW_PATH)/include -o bin/app -L$(SFML_PATH)/lib -L$(RTAUDIO_PATH)/lib -L$(FFTW_PATH)/lib -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network -lrtaudio -lfftw3 -lfftw3f
