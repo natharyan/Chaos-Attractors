@@ -15,4 +15,4 @@ all: compile
 
 compile:	
 	mkdir -p bin
-	g++ -std=c++14 $(cppFileNames) ./src/includes/matrix.cpp ./src/includes/attractors/lorenz.cpp -I$(SFML_PATH)/include -I$(RTAUDIO_PATH)/include/rtaudio -I$(FFTW_PATH)/include -o bin/app -L$(SFML_PATH)/lib -L$(RTAUDIO_PATH)/lib -L$(FFTW_PATH)/lib -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network -lrtaudio -lfftw3 -lfftw3f
+	g++ -std=c++14 $(cppFileNames) ./src/includes/matrix.cpp ./src/includes/attractors/lorenz.cpp ./src/includes/attractors/aizawa.cpp -I$(SFML_PATH)/include -I$(RTAUDIO_PATH)/include/rtaudio -I$(FFTW_PATH)/include -o bin/app -L$(SFML_PATH)/lib -L$(RTAUDIO_PATH)/lib -L$(FFTW_PATH)/lib -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio -lsfml-network -lrtaudio -lfftw3 -lfftw3f

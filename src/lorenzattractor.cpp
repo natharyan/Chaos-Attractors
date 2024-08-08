@@ -131,7 +131,7 @@ public:
             render(points, trails);
 
             songTitleText.setString("Now Playing: " + audioPlayer.getSongTitle());
-            angleText.setString("Y-Axis Rotation: " + std::to_string(angles[angleIndex]));
+            angleText.setString("Rotation: " + std::to_string(angles[angleIndex]));
         }
     }
 

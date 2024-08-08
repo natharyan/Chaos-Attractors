@@ -9,6 +9,9 @@
 #include <RtAudio.h>
 #include <fftw3.h>
 #include "includes/attractors/attractors.h"
+#include "includes/attractors/base_attractor.h"
+#include <string>
+
 
 class AudioPlayer {
 public:
@@ -23,6 +26,7 @@ public:
                 sound.setBuffer(buffer);
                 sound.play();
                 songTitle = fsPath.filename().string();
+                computeMaxAmplitude();
                 return true;
             }
         }
@@ -53,6 +57,10 @@ public:
         return songTitle;
     }
 
+    float getMaxAmplitude() const {
+        return maxAmplitude;
+    }
+
 private:
     sf::SoundBuffer buffer;
     sf::Sound sound;
@@ -60,20 +68,37 @@ private:
     unsigned int sampleRate;
     float currentAmplitude;
     std::string songTitle;
+    float maxAmplitude;
+
+    void computeMaxAmplitude() {
+        float maxAmplitude = 0.0f;
+
+        size_t sampleCount = buffer.getSampleCount();
+
+        for (size_t i = 0; i < sampleCount; ++i) {
+            float absSample = std::abs(samples[i]);
+            if (absSample > maxAmplitude) {
+                maxAmplitude = absSample;
+            }
+        }
+    }
 };
 
 class Visualization {
 public:
-    Visualization(int width, int height, const std::string& title, AudioPlayer& audioPlayer)
+    Visualization(int width, int height, const std::string& title, AudioPlayer& audioPlayer, const Attractor& attractor)
         : window(sf::VideoMode::getFullscreenModes()[0], title, sf::Style::Fullscreen),
-          scale(18.0f),
-          offsetX(0.0f),
-          offsetY(480.0f),
+          scale(attractor.scale),
+          offsetX(attractor.offsetX),
+          offsetY(attractor.offsetY),
+          angles(attractor.angles),
+          offsetYs(attractor.offsetYs),
           angleIndex(0),
-          angles{ M_PI / 2, 0, M_PI, 3 * M_PI / 2},
-          offsetYs{480, 60, 60, -480},
           audioPlayer(audioPlayer),
-          isTransitioning(false), transitionFrames(0) {
+          xyswap(attractor.xyswap),
+          isTransitioning(false), transitionFrames(0),
+          attractor(attractor),
+          randrange(attractor.randrange) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -97,7 +122,7 @@ public:
             window.setFramerateLimit(60);
         }
 
-    void run(const LorenzAttractor& lorenz) {
+    void run(const Attractor& attractor) {
         std::vector<std::vector<float>> points = initializePoints();
         std::vector<std::vector<sf::Vertex>> trails(points.size());
         const size_t maxTrailSize = 30;
@@ -108,18 +133,22 @@ public:
             if(amplitude > 800.0f){
                 amplitude = 800.0f;
             }
-            // float speedFactor = lorenz.dt + 0.000007f * amplitude;
-            float speedFactor = lorenz.speedfactor(lorenz.dt, amplitude);
+            float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
             if(speedFactor > 0.007f){
                 speedFactor = 0.007f;
             }
-            std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
-            LorenzAttractor adjustedLorenz(lorenz.sigma, lorenz.rho, lorenz.beta, speedFactor);
-            updatePoints(adjustedLorenz, points, trails, maxTrailSize);
+            // std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
+            std::unique_ptr<Attractor> adjustedattractor;
+            if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
+                adjustedattractor = std::make_unique<LorenzAttractor>(speedFactor);
+            } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
+                adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
+            }
+            updatePoints(*adjustedattractor, points, trails, maxTrailSize);
             render(points, trails);
 
             songTitleText.setString("Now Playing: " + audioPlayer.getSongTitle());
-            angleText.setString("Y-Axis Rotation: " + std::to_string(angles[angleIndex]));
+            angleText.setString("Rotation: " + std::to_string(angles[angleIndex]));
         }
     }
 
@@ -128,8 +157,8 @@ private:
     float scale;
     float offsetX, offsetY;
     int angleIndex;
-    float angles[4];
-    float offsetYs[4];
+    std::array<float, 4> angles;
+    std::array<float, 4> offsetYs;
     AudioPlayer& audioPlayer;
     sf::Font font;
     sf::Text titletext;
@@ -137,20 +166,33 @@ private:
     sf::Text angleText;
     bool isTransitioning;
     int transitionFrames;
+    bool xyswap;
+    const Attractor& attractor;
+    float randrange;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
         unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
         std::default_random_engine generator(seed);
-        std::uniform_real_distribution<float> distribution(-0.2f, 0.2f);
-
-        for (int i = 0; i < 500; ++i) {
-            float x = (i < 250) ? -0.1f : 0.1f;
-            points.push_back({
-                x + distribution(generator) * 0.01f,
-                distribution(generator),
-                distribution(generator)
-            });
+        std::uniform_real_distribution<float> distribution(-randrange, randrange);
+        
+        if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
+            for (int i = 0; i < 500; ++i) {
+                float x = (i < 250) ? -0.1f : 0.1f;
+                points.push_back({
+                    x + distribution(generator) * 0.01f,
+                    distribution(generator),
+                    distribution(generator)
+                });
+            }
+        } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
+            for (int i = 0; i < 1000; ++i) {
+                points.push_back({
+                    distribution(generator),
+                    distribution(generator),
+                    distribution(generator)
+                });
+            }
         }
         return points;
     }
@@ -162,9 +204,9 @@ private:
                 (event.type == sf::Event::KeyPressed && (event.key.code == sf::Keyboard::Q || event.key.code == sf::Keyboard::Escape || event.key.code == sf::Keyboard::BackSpace))) {
                 window.close();
             } else if (event.type == sf::Event::KeyPressed) {
-                if (event.key.code == sf::Keyboard::Right) {
+                if (event.key.code == sf::Keyboard::Up) {
                     angleIndex = (angleIndex + 1) % 4;
-                } else if (event.key.code == sf::Keyboard::Left) {
+                } else if (event.key.code == sf::Keyboard::Down) {
                     angleIndex = (angleIndex - 1 + 4) % 4;
                 }
                 offsetY = offsetYs[angleIndex];
@@ -174,10 +216,10 @@ private:
         }
     }
 
-    void updatePoints(const LorenzAttractor& lorenz, std::vector<std::vector<float>>& points, 
+    void updatePoints(const Attractor& attractor, std::vector<std::vector<float>>& points, 
                       std::vector<std::vector<sf::Vertex>>& trails, size_t maxTrailSize) {
         for (size_t i = 0; i < points.size(); ++i) {
-            points[i] = lorenz.step(points[i]);
+            points[i] = attractor.step(points[i]);
             
             Matrix rotation_y(3, 3);
             rotation_y(0, 0) = cos(angles[angleIndex]); rotation_y(0, 2) = -sin(angles[angleIndex]);
@@ -192,8 +234,14 @@ private:
             Matrix rotated_2d = matrix_multiplication(rotation_y, point);
 
             Matrix projection_matrix(2, 3);
-            projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
-            projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
+            if(xyswap){
+                projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
+                projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
+            }
+            else{
+                projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
+                projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
+            }
 
             Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
@@ -223,9 +271,11 @@ private:
     }
 
     sf::Color getColorForAmplitude(float amplitude) {
-        float normalizedAmplitude = std::min(amplitude / 8000.0f, 1.0f);
-        sf::Color startColor(0, 0, 255);
-        sf::Color endColor(255, 0, 0);
+        float normalizedAmplitude = std::min(amplitude / attractor.maxamplitude, 1.0f);
+        // sf::Color startColor(0, 0, 255);
+        // sf::Color endColor(255, 0, 0);
+        sf::Color startColor(100, 223, 223);
+        sf::Color endColor(116, 0, 184);
         return lerpColor(startColor, endColor, normalizedAmplitude);
     }
 
@@ -258,8 +308,14 @@ private:
                 Matrix rotated_2d = matrix_multiplication(rotation_y, point_matrix);
 
                 Matrix projection_matrix(2, 3);
-                projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
-                projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
+                if(xyswap){
+                    projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
+                    projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
+                }
+                else{
+                    projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
+                    projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
+                }
 
                 Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
@@ -281,12 +337,34 @@ private:
 
 int main() {
     AudioPlayer audioPlayer;
-    if (!audioPlayer.loadAndPlay("audio/Dances for Harp and Orchestra Danse profane.mp3")) {
-        std::cerr << "Failed to load and play audio file." << std::endl;
-    }
     sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
-    LorenzAttractor lorenz(11.0f, 30.0f, 10.0f / 3.0f, 0.0005f);
-    Visualization vis(desktopMode.width, desktopMode.height, "Lorenz Attractor", audioPlayer);
-    vis.run(lorenz);
+    std::cout << "Attractors:" << std::endl;
+    std::cout << "1. Lorenz" << std::endl;
+    std::cout << "2. Aizawa" << std::endl;
+    std::cout << "Enter Attractor: ";
+    std::string attractorchoice;
+    std::cin >> attractorchoice;
+    std::unique_ptr<Attractor> attractor;
+    std::string title;
+
+    if(attractorchoice == "Lorenz") {
+        attractor = std::make_unique<LorenzAttractor>(lorenz_defdt);
+        title = "Lorenz Attractor";
+    } else if(attractorchoice == "Aizawa") {
+        attractor = std::make_unique<AizawaAttractor>(aizawa_defdt);
+        title = "Aizawa Attractor";
+    } else {
+        std::cerr << "Invalid attractor choice." << std::endl;
+        return 1;
+    }
+
+    if (!audioPlayer.loadAndPlay(attractor->defaultaudio)) {
+        std::cerr << "Error loading audio" << std::endl;
+        return 1;
+    }
+
+    Visualization vis(desktopMode.width, desktopMode.height, title, audioPlayer, *attractor);
+    vis.run(*attractor);
+
     return 0;
 }

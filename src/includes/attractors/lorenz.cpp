@@ -1,9 +1,18 @@
 #include "lorenz.h"
 
-LorenzAttractor::LorenzAttractor(float sigma, float rho, float beta, float dt)
-    : sigma(sigma), rho(rho), beta(beta), dt(dt) {}
-
-
+LorenzAttractor::LorenzAttractor(float dt) : Attractor(){
+    this->dt = dt;
+    defdt = 0.0005f;
+    scale = 18.0f;
+    offsetX = 0.0f;
+    offsetY = 480.0f;
+    angles = {M_PI / 2, 0, M_PI, 3 * M_PI / 2};
+    offsetYs = {480, 60, 60, -480};
+    defaultaudio = "audio/Debussy - Dances for Harp and Orchestra Danse profane.mp3";
+    xyswap = false;
+    randrange = 0.2f;
+    maxamplitude = 3500.0f;
+}
 
 std::vector<float> LorenzAttractor::step(const std::vector<float>& point) const {
     float dx = sigma * (point[1] - point[0]) * dt;

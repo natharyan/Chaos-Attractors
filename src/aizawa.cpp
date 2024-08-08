@@ -8,21 +8,7 @@
 #include "includes/matrix.h"
 #include <RtAudio.h>
 #include <fftw3.h>
-
-class AizawaAttractor {
-public:
-    float a, b, c, d, e, f, dt;
-    AizawaAttractor(float a, float b, float c, float d, float e, float f, float dt)
-        : a(a), b(b), c(c), d(d), e(e), f(f), dt(dt) {}
-
-    std::vector<float> step(const std::vector<float>& point) const {
-        float x = point[0], y = point[1], z = point[2];
-        float dx = ((z - b) * x - d * y) * dt;
-        float dy = (d * x + (z - b) * y) * dt;
-        float dz = (c + a * z - z * z * z / 3 - x * x + f * z * x * x * x) * dt;
-        return {point[0] + dx, point[1] + dy, point[2] + dz};
-    }
-};
+#include "includes/attractors/attractors.h"
 
 class AudioPlayer {
 public:
@@ -80,7 +66,7 @@ private:
 
 class Visualization {
 public:
-    Visualization(int width, int height, const std::string& title, AudioPlayer& audioPlayer)
+    Visualization(int width, int height, const std::string& title, AudioPlayer& audioPlayer, bool xRotation = false)
         : window(sf::VideoMode::getFullscreenModes()[0], title, sf::Style::Fullscreen),
           scale(330.0f),
           offsetX(0.0f),
@@ -124,10 +110,11 @@ public:
             if(amplitude > 800.0f){
                 amplitude = 800.0f;
             }
-            float speedFactor = aizawa.dt + 0.00001f * amplitude;
+            // float speedFactor = aizawa.dt + 0.00001f * amplitude;
+            float speedFactor = aizawa.speedfactor(aizawa.dt, amplitude);
 
             std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
-            AizawaAttractor adjustedAizawa(aizawa.a, aizawa.b, aizawa.c, aizawa.d, aizawa.e, aizawa.f, speedFactor);
+            AizawaAttractor adjustedAizawa(speedFactor);
             updatePoints(adjustedAizawa, points, trails, maxTrailSize);
             std::cout << "dt: " << aizawa.dt << std::endl;
             render(points, trails);
@@ -301,7 +288,7 @@ int main() {
         std::cerr << "Failed to load and play audio file." << std::endl;
     }
     sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
-    AizawaAttractor aizawa(0.95f, 0.7f, 0.6f, 3.5f, 0.25f, 0.1f, 0.0015f);
+    AizawaAttractor aizawa(0.0015f);
     Visualization vis(desktopMode.width, desktopMode.height, "Aizawa Attractor", audioPlayer);
     vis.run(aizawa);
     return 0;
