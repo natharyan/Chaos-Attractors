@@ -310,6 +310,14 @@ void handleEvents() {
                     offsetY = offsetYs[closestIndex];
                 }
             }
+            if(event.key.code == sf::Keyboard::Up){
+                scale += 0.1f;
+                offsetY += 2.2f;
+            }
+            if(event.key.code == sf::Keyboard::Down){
+                scale -= 0.1f;
+                offsetY -= 2.2f;
+            }
         }
     }
 }
