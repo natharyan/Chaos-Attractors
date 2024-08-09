@@ -108,17 +108,22 @@ public:
             titletext.setCharacterSize(15);
             titletext.setFillColor(sf::Color::White);
             titletext.setString("Attractor: " + title);
-            titletext.setPosition(10.f, window.getSize().y - 70.0f);
+            titletext.setPosition(10.f, window.getSize().y - 90.0f);
 
             songTitleText.setFont(font);
             songTitleText.setCharacterSize(15);
             songTitleText.setFillColor(sf::Color::White);
-            songTitleText.setPosition(10.f, window.getSize().y - 50.0f);
+            songTitleText.setPosition(10.f, window.getSize().y - 70.0f);
 
             angleText.setFont(font);
             angleText.setCharacterSize(15);
             angleText.setFillColor(sf::Color::White);
-            angleText.setPosition(10.f, window.getSize().y - 30.0f);
+            angleText.setPosition(10.f, window.getSize().y - 50.0f);
+
+            scaleText.setFont(font);
+            scaleText.setCharacterSize(15);
+            scaleText.setFillColor(sf::Color::White);
+            scaleText.setPosition(10.f, window.getSize().y - 30.0f);
 
             window.setFramerateLimit(60);
         }
@@ -150,7 +155,7 @@ public:
 
             songTitleText.setString("Now Playing: " + audioPlayer.getSongTitle());
             angleText.setString("Rotation: " + std::to_string(angle));
-
+            scaleText.setString("Scale: " + std::to_string(scale));
         }
     }
 
@@ -166,6 +171,7 @@ private:
     sf::Text titletext;
     sf::Text songTitleText;
     sf::Text angleText;
+    sf::Text scaleText;
     bool isTransitioning;
     int transitionFrames;
     bool xyswap;
@@ -279,12 +285,12 @@ void handleEvents() {
                     if (angle < 0) {
                         angle += 2 * M_PI;
                     }
-                    // Find the closest angle
+                    // Move to the closest smaller angle
                     size_t closestIndex = 0;
                     float minDifference = 2 * M_PI;
                     for (size_t i = 0; i < angles.size(); ++i) {
-                        float diff = std::abs(angles[i] - angle);
-                        if (diff < minDifference) {
+                        float diff = angle - angles[i];
+                        if (diff > 0 && diff < minDifference) {
                             minDifference = diff;
                             closestIndex = i;
                         }
@@ -297,12 +303,12 @@ void handleEvents() {
                     if (angle < 0) {
                         angle += 2 * M_PI;
                     }
-                    // Find the closest angle
+                    // Move to the closest smaller angle
                     size_t closestIndex = 0;
                     float minDifference = 2 * M_PI;
                     for (size_t i = 0; i < angles.size(); ++i) {
-                        float diff = std::abs(angles[i] - angle);
-                        if (diff < minDifference) {
+                        float diff = angle - angles[i];
+                        if (diff > 0 && diff < minDifference) {
                             minDifference = diff;
                             closestIndex = i;
                         }
@@ -441,6 +447,7 @@ void handleEvents() {
         window.draw(titletext);
         window.draw(songTitleText);
         window.draw(angleText);
+        window.draw(scaleText);
         window.display();
     }
 };

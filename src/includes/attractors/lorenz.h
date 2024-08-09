@@ -13,9 +13,9 @@ public:
     float speedfactor(float dt, float amplitude) const override;
 
 private:
-    float sigma = 11.0f;
-    float rho = 30.0f;
-    float beta = 10.0f / 3.0f;
+    float sigma = 10.0f;
+    float rho = 28.0f;
+    float beta = 8.0f / 3.0f;
 };
 
 #endif
