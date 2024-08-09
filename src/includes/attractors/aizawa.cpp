@@ -3,7 +3,7 @@
 AizawaAttractor::AizawaAttractor(float dt) : Attractor(){
     this->dt = dt;
     defdt = 0.003f;
-    scale = 330.0f;
+    scale = 350.0f;
     offsetX = 0.0f;
     offsetY = 0.0f;
     // angles = {M_PI, M_PI / 2 + M_PI/16, 3 * M_PI / 2 + M_PI/16, 0};

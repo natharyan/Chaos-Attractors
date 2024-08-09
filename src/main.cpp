@@ -327,27 +327,29 @@ void handleEvents() {
         for (size_t i = 0; i < points.size(); ++i) {
             points[i] = attractor.step(points[i]);
             
-            Matrix rotation_y(3, 3);
-            rotation_y(0, 0) = cos(angle); rotation_y(0, 2) = -sin(angle);
-            rotation_y(1, 1) = 1;
-            rotation_y(2, 0) = sin(angle); rotation_y(2, 2) = cos(angle);
+            Matrix rotation = Matrix(3, 3);
+            if (xyswap) {
+                // Rotate around y-axis
+                rotation(0, 0) = cos(angle); rotation(0, 2) = -sin(angle);
+                rotation(1, 1) = 1;
+                rotation(2, 0) = sin(angle); rotation(2, 2) = cos(angle);
+            }else {
+                // Rotate around x-axis
+                rotation(0, 0) = 1;
+                rotation(1, 1) = cos(angle); rotation(1, 2) = -sin(angle);
+                rotation(2, 1) = sin(angle); rotation(2, 2) = cos(angle);
+            }
 
             Matrix point(3, 1);
             point(0, 0) = points[i][0];
             point(1, 0) = points[i][1];
             point(2, 0) = points[i][2];
 
-            Matrix rotated_2d = matrix_multiplication(rotation_y, point);
+            Matrix rotated_2d = matrix_multiplication(rotation, point);
 
             Matrix projection_matrix(2, 3);
-            if(xyswap){
-                projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
-                projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
-            }
-            else{
-                projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
-                projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
-            }
+            projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
+            projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
 
             Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
@@ -401,28 +403,30 @@ void handleEvents() {
 
             sf::CircleShape pointShape(1);
             for (const auto& p : points) {
-                Matrix rotation_y(3, 3);
-                rotation_y(0, 0) = cos(angle); rotation_y(0, 2) = -sin(angle);
-                rotation_y(1, 1) = 1;
-                rotation_y(2, 0) = sin(angle); rotation_y(2, 2) = cos(angle);
+                Matrix rotation = Matrix(3, 3);
+                if (xyswap) {
+                    // Rotate around y-axis
+                    rotation(0, 0) = cos(angle); rotation(0, 2) = -sin(angle);
+                    rotation(1, 1) = 1;
+                    rotation(2, 0) = sin(angle); rotation(2, 2) = cos(angle);
+                }else {
+                    // Rotate around x-axis
+                    rotation(0, 0) = 1;
+                    rotation(1, 1) = cos(angle); rotation(1, 2) = -sin(angle);
+                    rotation(2, 1) = sin(angle); rotation(2, 2) = cos(angle);
+                }
 
-                Matrix point_matrix(3, 1);
-                point_matrix(0, 0) = p[0];
-                point_matrix(1, 0) = p[1];
-                point_matrix(2, 0) = p[2];
+                Matrix point(3, 1);
+                point(0, 0) = p[0];
+                point(1, 0) = p[1];
+                point(2, 0) = p[2];
 
-                Matrix rotated_2d = matrix_multiplication(rotation_y, point_matrix);
+                Matrix rotated_2d = matrix_multiplication(rotation, point);
 
                 Matrix projection_matrix(2, 3);
-                if(xyswap){
-                    projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
-                    projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
-                }
-                else{
-                    projection_matrix(0, 0) = 0; projection_matrix(0, 1) = 1; projection_matrix(0, 2) = 0;
-                    projection_matrix(1, 0) = 1; projection_matrix(1, 1) = 0; projection_matrix(1, 2) = 0;
-                }
-
+                projection_matrix(0, 0) = 1; projection_matrix(0, 1) = 0; projection_matrix(0, 2) = 0;
+                projection_matrix(1, 0) = 0; projection_matrix(1, 1) = 1; projection_matrix(1, 2) = 0;
+                
                 Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
                 float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
