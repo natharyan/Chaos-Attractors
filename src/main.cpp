@@ -61,9 +61,10 @@ public:
         return maxAmplitude;
     }
 
+    sf::Sound sound;
+
 private:
     sf::SoundBuffer buffer;
-    sf::Sound sound;
     const sf::Int16* samples;
     unsigned int sampleRate;
     float currentAmplitude;
@@ -99,7 +100,8 @@ public:
           isTransitioning(false), transitionFrames(0),
           attractor(attractor),
           randrange(attractor.randrange),
-          lastadjustedangle(attractor.angles[0]) {
+          lastadjustedangle(attractor.angles[0]),
+          spacepress(false) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -134,7 +136,7 @@ public:
             commandsText.setCharacterSize(15);
             commandsText.setFillColor(sf::Color::White);
             commandsText.setPosition(10.f, window.getSize().y - 30.0f);
-            commandsText.setString("Commands: A + Left/Right(preset angles), Left/Right(rotate), Up/Down(change scale), Space(pause) Q(quit)");
+            commandsText.setString("Commands: Space(pause), A + Left/Right(preset angles), Left/Right(rotate), Up/Down(change scale), Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -146,6 +148,7 @@ public:
 
         while (window.isOpen()) {
             handleEvents();
+            // std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
             float amplitude = audioPlayer.getAmplitude();
             if(amplitude > 800.0f){
                 amplitude = 800.0f;
@@ -154,12 +157,19 @@ public:
             if(speedFactor > 0.007f){
                 speedFactor = 0.007f;
             }
-            // std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
             std::unique_ptr<Attractor> adjustedattractor;
-            if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
-                adjustedattractor = std::make_unique<LorenzAttractor>(speedFactor);
-            } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
-                adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
+            if(!spacepress){
+                if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
+                    adjustedattractor = std::make_unique<LorenzAttractor>(speedFactor);
+                } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
+                    adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
+                }
+            }else{
+                if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
+                    adjustedattractor = std::make_unique<LorenzAttractor>(0.0f);
+                } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
+                    adjustedattractor = std::make_unique<AizawaAttractor>(0.0f);
+                }
             }
             updatePoints(*adjustedattractor, points, trails, maxTrailSize);
             render(points, trails);
@@ -196,6 +206,7 @@ private:
     const Attractor& attractor;
     float randrange;
     float lastadjustedangle;
+    bool spacepress;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -341,6 +352,17 @@ void handleEvents() {
             if(event.key.code == sf::Keyboard::Down){
                 scale -= 0.1f;
                 offsetY -= 2.2f;
+            }
+            if(event.key.code == sf::Keyboard::Space){
+                if(!spacepress){
+                    spacepress = true;
+                    // pause the audio player
+                    audioPlayer.sound.pause();
+                }else{
+                    spacepress = false;
+                    // play the audio player
+                    audioPlayer.sound.play();
+                }
             }
         }
     }
