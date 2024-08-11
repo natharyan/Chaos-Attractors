@@ -108,22 +108,33 @@ public:
             titletext.setCharacterSize(15);
             titletext.setFillColor(sf::Color::White);
             titletext.setString("Attractor: " + title);
-            titletext.setPosition(10.f, window.getSize().y - 90.0f);
+            titletext.setPosition(10.f, window.getSize().y - 130.0f);
 
             songTitleText.setFont(font);
             songTitleText.setCharacterSize(15);
             songTitleText.setFillColor(sf::Color::White);
-            songTitleText.setPosition(10.f, window.getSize().y - 70.0f);
+            songTitleText.setPosition(10.f, window.getSize().y - 110.0f);
 
             angleText.setFont(font);
             angleText.setCharacterSize(15);
             angleText.setFillColor(sf::Color::White);
-            angleText.setPosition(10.f, window.getSize().y - 50.0f);
+            angleText.setPosition(10.f, window.getSize().y - 90.0f);
 
             scaleText.setFont(font);
             scaleText.setCharacterSize(15);
             scaleText.setFillColor(sf::Color::White);
-            scaleText.setPosition(10.f, window.getSize().y - 30.0f);
+            scaleText.setPosition(10.f, window.getSize().y - 70.0f);
+
+            amplitudeText.setFont(font);
+            amplitudeText.setCharacterSize(15);
+            amplitudeText.setFillColor(sf::Color::White);
+            amplitudeText.setPosition(10.f, window.getSize().y - 50.0f);
+
+            commandsText.setFont(font);
+            commandsText.setCharacterSize(15);
+            commandsText.setFillColor(sf::Color::White);
+            commandsText.setPosition(10.f, window.getSize().y - 30.0f);
+            commandsText.setString("Commands: A + Left/Right(preset angles), Left/Right(rotate), Up/Down(change scale), Space(pause) Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -154,8 +165,13 @@ public:
             render(points, trails);
 
             songTitleText.setString("Now Playing: " + audioPlayer.getSongTitle());
-            angleText.setString("Rotation: " + std::to_string(angle));
+            if(xyswap){
+                angleText.setString("Rotation along Y-Axis: " + std::to_string(angle));
+            }else{
+                angleText.setString("Rotation along X-Axis: " + std::to_string(angle));
+            }
             scaleText.setString("Scale: " + std::to_string(scale));
+            amplitudeText.setString("Normalized Amplitude: " + std::to_string(std::min(audioPlayer.getCurrentAmplitude() / attractor.maxamplitude, 1.0f)));
         }
     }
 
@@ -172,6 +188,8 @@ private:
     sf::Text songTitleText;
     sf::Text angleText;
     sf::Text scaleText;
+    sf::Text amplitudeText;
+    sf::Text commandsText;
     bool isTransitioning;
     int transitionFrames;
     bool xyswap;
@@ -186,8 +204,8 @@ private:
         std::uniform_real_distribution<float> distribution(-randrange, randrange);
         
         if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
-            for (int i = 0; i < 500; ++i) {
-                float x = (i < 250) ? -0.1f : 0.1f;
+            for (int i = 0; i < 900; ++i) {
+                float x = (i < 450) ? -0.1f : 0.1f;
                 points.push_back({
                     x + distribution(generator) * 0.01f,
                     distribution(generator),
@@ -220,7 +238,7 @@ void handleEvents() {
     while (window.pollEvent(event)) {
         if (event.type == sf::Event::Closed || 
             (event.type == sf::Event::KeyPressed && 
-            (event.key.code == sf::Keyboard::Q || event.key.code == sf::Keyboard::Escape || event.key.code == sf::Keyboard::BackSpace))) {
+            (event.key.code == sf::Keyboard::Q))) {
             window.close();
         } else if (event.type == sf::Event::KeyPressed) {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
@@ -388,8 +406,8 @@ void handleEvents() {
         float normalizedAmplitude = std::min(amplitude / attractor.maxamplitude, 1.0f);
         // sf::Color startColor(0, 0, 255);
         // sf::Color endColor(255, 0, 0);
-        sf::Color startColor(100, 223, 223);
-        sf::Color endColor(116, 0, 184);
+        sf::Color startColor(115, 210, 222);
+        sf::Color endColor(216, 17, 89);
         return lerpColor(startColor, endColor, normalizedAmplitude);
     }
 
@@ -448,6 +466,8 @@ void handleEvents() {
         window.draw(songTitleText);
         window.draw(angleText);
         window.draw(scaleText);
+        window.draw(amplitudeText);
+        window.draw(commandsText);
         window.display();
     }
 };
