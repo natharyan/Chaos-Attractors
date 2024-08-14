@@ -154,15 +154,20 @@ public:
             if(amplitude > 800.0f){
                 amplitude = 800.0f;
             }
-            float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
-            if(speedFactor > 0.007f){
-                speedFactor = 0.007f;
-            }
             std::unique_ptr<Attractor> adjustedattractor;
             if(!spacepress){
                 if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
+                    float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
+                    if(speedFactor > 0.007f){
+                        speedFactor = 0.007f;
+                    }
                     adjustedattractor = std::make_unique<LorenzAttractor>(speedFactor);
                 } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
+                    float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
+                    if(speedFactor > 0.009f){
+                        speedFactor = 0.009f;
+                    }
+                    std::cout << speedFactor << std::endl;
                     adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
                 }
             }else{
@@ -227,7 +232,7 @@ private:
                 });
             }
         } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
-            for (int i = 0; i < 1000; ++i) {
+            for (int i = 0; i < 500; ++i) {
                 points.push_back({
                     distribution(generator),
                     distribution(generator),
