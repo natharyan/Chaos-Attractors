@@ -18,12 +18,12 @@ public:
     float scale;
     float offsetX;
     float offsetY;
-    std::array<float, 4> angles;
+    std::vector<std::array<float, 3>> angles;
     std::array<float, 4> offsetYs;
     std::string defaultaudio;
     bool xyswap;
     float randrange;
     float maxamplitude;
-};
+};;
 
 #endif // ATTRACTOR_H

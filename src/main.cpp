@@ -94,15 +94,19 @@ public:
           offsetY(attractor.offsetY),
           angles(attractor.angles),
           offsetYs(attractor.offsetYs),
-          angle(attractor.angles[0]),
+          rotationX(attractor.angles[0][0]),
+          rotationY(attractor.angles[0][1]),
+          rotationZ(attractor.angles[0][2]),
           audioPlayer(audioPlayer),
           xyswap(attractor.xyswap),
           isTransitioning(false), transitionFrames(0),
           attractor(attractor),
           randrange(attractor.randrange),
-          lastadjustedangle(attractor.angles[0]),
+          lastadjustedangle(attractor.angles[0][0]), //TODO: change
           spacepress(false),
-          tailon(true) {
+          tailon(true),
+          isDragging(false),
+          lastMousePos(0, 0) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -111,17 +115,22 @@ public:
             titletext.setCharacterSize(15);
             titletext.setFillColor(sf::Color::White);
             titletext.setString("Attractor: " + title);
-            titletext.setPosition(10.f, window.getSize().y - 130.0f);
+            titletext.setPosition(10.f, window.getSize().y - 150.0f);
 
             songTitleText.setFont(font);
             songTitleText.setCharacterSize(15);
             songTitleText.setFillColor(sf::Color::White);
-            songTitleText.setPosition(10.f, window.getSize().y - 110.0f);
+            songTitleText.setPosition(10.f, window.getSize().y - 130.0f);
 
-            angleText.setFont(font);
-            angleText.setCharacterSize(15);
-            angleText.setFillColor(sf::Color::White);
-            angleText.setPosition(10.f, window.getSize().y - 90.0f);
+            angleTextX.setFont(font);
+            angleTextX.setCharacterSize(15);
+            angleTextX.setFillColor(sf::Color::White);
+            angleTextX.setPosition(10.f, window.getSize().y - 110.0f);
+
+            angleTextY.setFont(font);
+            angleTextY.setCharacterSize(15);
+            angleTextY.setFillColor(sf::Color::White);
+            angleTextY.setPosition(10.f, window.getSize().y - 90.0f);
 
             scaleText.setFont(font);
             scaleText.setCharacterSize(15);
@@ -137,7 +146,7 @@ public:
             commandsText.setCharacterSize(15);
             commandsText.setFillColor(sf::Color::White);
             commandsText.setPosition(10.f, window.getSize().y - 30.0f);
-            commandsText.setString("Commands: T(toggle tails), Space(pause), A + Left/Right(preset angles), Left/Right(rotate), Up/Down(change scale), Q(quit)");
+            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Space(pause), Scroll(Change scale), Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -181,11 +190,8 @@ public:
             render(points, trails);
 
             songTitleText.setString("Now Playing: " + audioPlayer.getSongTitle());
-            if(xyswap){
-                angleText.setString("Rotation along Y-Axis: " + std::to_string(angle));
-            }else{
-                angleText.setString("Rotation along X-Axis: " + std::to_string(angle));
-            }
+            angleTextX.setString("Rotation along X-Axis: " + std::to_string(rotationX));
+            angleTextY.setString("Rotation along Y-Axis: " + std::to_string(rotationY));
             scaleText.setString("Scale: " + std::to_string(scale));
             amplitudeText.setString("Normalized Amplitude: " + std::to_string(std::min(audioPlayer.getCurrentAmplitude() / attractor.maxamplitude, 1.0f)).substr(0, 4));
         }
@@ -196,13 +202,14 @@ private:
     float scale;
     float offsetX, offsetY;
     float angle;
-    std::array<float, 4> angles;
+    std::vector<std::array<float, 3>> angles;
     std::array<float, 4> offsetYs;
     AudioPlayer& audioPlayer;
     sf::Font font;
     sf::Text titletext;
     sf::Text songTitleText;
-    sf::Text angleText;
+    sf::Text angleTextX;
+    sf::Text angleTextY;
     sf::Text scaleText;
     sf::Text amplitudeText;
     sf::Text commandsText;
@@ -215,6 +222,10 @@ private:
     bool spacepress;
     bool tailon;
     int counter = 0;
+    float rotationX, rotationY, rotationZ;
+    bool isDragging;
+    sf::Vector2i lastMousePos;
+    bool tailtoggle = true;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -254,113 +265,100 @@ bool isAngleInList(float value, const std::array<float, 4> list) {
 
 void handleEvents() {
     sf::Event event;
+
     while (window.pollEvent(event)) {
         if (event.type == sf::Event::Closed || 
             (event.type == sf::Event::KeyPressed && 
             (event.key.code == sf::Keyboard::Q))) {
             window.close();
-        } else if (event.type == sf::Event::KeyPressed) {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-                    if (isAngleInList(angle, angles)) {
-                        // Move to the next angle in the sequence
-                        for (size_t i = 0; i < angles.size(); ++i) {
-                            if (angles[i] == angle) {
-                                size_t nextIndex = (i + 1) % angles.size();
-                                angle = angles[nextIndex];
-                                offsetY = offsetYs[nextIndex];
-                                break;
-                            }
-                        }
-                    } else {
-                        // Move to the closest larger angle
-                        size_t closestIndex = 0;
-                        float minDifference = 2 * M_PI;
-                        for (size_t i = 0; i < angles.size(); ++i) {
-                            float diff = angles[i] - angle;
-                            if (diff > 0 && diff < minDifference) {
-                                minDifference = diff;
-                                closestIndex = i;
-                            }
-                        }
-                        angle = angles[closestIndex];
-                        offsetY = offsetYs[closestIndex];
-                    }
-                    isTransitioning = true;
-                    transitionFrames = 30;
-                } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-                    if (isAngleInList(angle, angles)) {
-                        // Move to the previous angle in the sequence
-                        for (size_t i = 0; i < angles.size(); ++i) {
-                            if (angles[i] == angle) {
-                                size_t prevIndex = (i - 1 + angles.size()) % angles.size();
-                                angle = angles[prevIndex];
-                                offsetY = offsetYs[prevIndex];
-                                break;
-                            }
-                        }
-                    } else {
-                        // Move to the closest smaller angle
-                        size_t closestIndex = 0;
-                        float minDifference = 2 * M_PI;
-                        for (size_t i = 0; i < angles.size(); ++i) {
-                            float diff = angle - angles[i];
-                            if (diff > 0 && diff < minDifference) {
-                                minDifference = diff;
-                                closestIndex = i;
-                            }
-                        }
-                        angle = angles[closestIndex];
-                        offsetY = offsetYs[closestIndex];
-                    }
-                    isTransitioning = true;
-                    transitionFrames = 30;
-                }
-            } else {
-                if (event.key.code == sf::Keyboard::Right && !sf::Keyboard::isKeyPressed(sf::Keyboard::A) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-                    angle = std::fmod(angle + 0.01f, 2 * M_PI);
-                    if (angle < 0) {
-                        angle += 2 * M_PI;
-                    }
-                    // Move to the closest smaller angle
-                    size_t closestIndex = 0;
-                    float minDifference = 2 * M_PI;
-                    for (size_t i = 0; i < angles.size(); ++i) {
-                        float diff = angle - angles[i];
-                        if (diff > 0 && diff < minDifference) {
-                            minDifference = diff;
-                            closestIndex = i;
-                        }
-                    }
-                    offsetY = offsetYs[closestIndex];
-                }
+        } else if (event.type == sf::Event::MouseButtonPressed) {
+            if (event.mouseButton.button == sf::Mouse::Left) {
+                isDragging = true;
+                lastMousePos = sf::Mouse::getPosition(window);
+                tailon = false;
+            }
+        } else if (event.type == sf::Event::MouseButtonReleased) {
+            if (event.mouseButton.button == sf::Mouse::Left) {
+                isDragging = false;
+                tailon = true;
+            }
+        } else if (event.type == sf::Event::MouseMoved) {
+            if (isDragging) {
+                sf::Vector2i currentMousePos = sf::Mouse::getPosition(window);
+                sf::Vector2i delta = currentMousePos - lastMousePos;
 
-                if (event.key.code == sf::Keyboard::Left && !sf::Keyboard::isKeyPressed(sf::Keyboard::A) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-                    angle = std::fmod(angle - 0.01f, 2 * M_PI);
-                    if (angle < 0) {
-                        angle += 2 * M_PI;
-                    }
-                    // Move to the closest smaller angle
-                    size_t closestIndex = 0;
-                    float minDifference = 2 * M_PI;
-                    for (size_t i = 0; i < angles.size(); ++i) {
-                        float diff = angle - angles[i];
-                        if (diff > 0 && diff < minDifference) {
-                            minDifference = diff;
-                            closestIndex = i;
-                        }
-                    }
-                    offsetY = offsetYs[closestIndex];
-                }
+                rotationX -= delta.y * 0.01f;
+                rotationY += delta.x * 0.01f;
+
+                lastMousePos = currentMousePos;
             }
-            if(event.key.code == sf::Keyboard::Up){
-                scale += 0.1f;
-                offsetY += 2.2f;
+        } else if (event.type == sf::Event::MouseWheelScrolled) {
+            float scaleFactor = 5.0f;
+            if (event.mouseWheelScroll.delta > 0) {
+                scale += scaleFactor;
+            } else {
+                scale -= scaleFactor;
             }
-            if(event.key.code == sf::Keyboard::Down){
-                scale -= 0.1f;
-                offsetY -= 2.2f;
-            }
+            tailon = false;
+        } else if (event.type == sf::Event::KeyPressed) {
+            // TODO: make this work with new angles data structure
+            // if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+            //     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+            //         if (isAngleInList(angle, angles)) {
+            //             // Move to the next angle in the sequence
+            //             for (size_t i = 0; i < angles.size(); ++i) {
+            //                 if (angles[i] == angle) {
+            //                     size_t nextIndex = (i + 1) % angles.size();
+            //                     angle = angles[nextIndex];
+            //                     offsetY = offsetYs[nextIndex];
+            //                     break;
+            //                 }
+            //             }
+            //         } else {
+            //             // Move to the closest larger angle
+            //             size_t closestIndex = 0;
+            //             float minDifference = 2 * M_PI;
+            //             for (size_t i = 0; i < angles.size(); ++i) {
+            //                 float diff = angles[i] - angle;
+            //                 if (diff > 0 && diff < minDifference) {
+            //                     minDifference = diff;
+            //                     closestIndex = i;
+            //                 }
+            //             }
+            //             angle = angles[closestIndex];
+            //             offsetY = offsetYs[closestIndex];
+            //         }
+            //         isTransitioning = true;
+            //         transitionFrames = 30;
+            //     } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+            //         if (isAngleInList(angle, angles)) {
+            //             // Move to the previous angle in the sequence
+            //             for (size_t i = 0; i < angles.size(); ++i) {
+            //                 if (angles[i] == angle) {
+            //                     size_t prevIndex = (i - 1 + angles.size()) % angles.size();
+            //                     angle = angles[prevIndex];
+            //                     offsetY = offsetYs[prevIndex];
+            //                     break;
+            //                 }
+            //             }
+            //         } else {
+            //             // Move to the closest smaller angle
+            //             size_t closestIndex = 0;
+            //             float minDifference = 2 * M_PI;
+            //             for (size_t i = 0; i < angles.size(); ++i) {
+            //                 float diff = angle - angles[i];
+            //                 if (diff > 0 && diff < minDifference) {
+            //                     minDifference = diff;
+            //                     closestIndex = i;
+            //                 }
+            //             }
+            //             angle = angles[closestIndex];
+            //             offsetY = offsetYs[closestIndex];
+            //         }
+            //         isTransitioning = true;
+            //         transitionFrames = 30;
+            //     }
+            // }
             if(event.key.code == sf::Keyboard::Space){
                 if(!spacepress){
                     spacepress = true;
@@ -372,14 +370,23 @@ void handleEvents() {
                     audioPlayer.sound.play();
                 }
             }
-            if(event.key.code == sf::Keyboard::T){
+            else if(event.key.code == sf::Keyboard::T){
                 if(tailon){
                     tailon = false;
+                    // false till T is pressed again
+                    tailtoggle = false;
                 }else{
                     tailon = true;
+                    tailtoggle = true;
                 }
             }
+
+        } else if(event.type != sf::Event::MouseWheelScrolled && event.type != sf::Event::MouseMoved && tailtoggle){
+            tailon = true;
         }
+        // else if(event.type == sf::Event::KeyReleased){
+        //     tailon = true;
+        // }
     }
 }
 
@@ -421,18 +428,26 @@ void handleEvents() {
         for (size_t i = 0; i < points.size(); ++i) {
             points[i] = attractor.step(points[i]);
             
-            Matrix rotation = Matrix(3, 3);
-            if (xyswap) {
-                // Rotate around y-axis
-                rotation(0, 0) = cos(angle); rotation(0, 2) = -sin(angle);
-                rotation(1, 1) = 1;
-                rotation(2, 0) = sin(angle); rotation(2, 2) = cos(angle);
-            }else {
-                // Rotate around x-axis
-                rotation(0, 0) = 1;
-                rotation(1, 1) = cos(angle); rotation(1, 2) = -sin(angle);
-                rotation(2, 1) = sin(angle); rotation(2, 2) = cos(angle);
-            }
+            Matrix rotationmatrixX = Matrix(3, 3);
+            Matrix rotationmatrixY = Matrix(3, 3);
+            Matrix rotationmatrixZ = Matrix(3, 3);
+
+            // Rotation around X-axis
+            rotationmatrixX(0, 0) = 1;
+            rotationmatrixX(1, 1) = cos(rotationX); rotationmatrixX(1, 2) = -sin(rotationX);
+            rotationmatrixX(2, 1) = sin(rotationX); rotationmatrixX(2, 2) = cos(rotationX);
+
+            // Rotation around Y-axis
+            rotationmatrixY(0, 0) = cos(rotationY); rotationmatrixY(0, 2) = sin(rotationY);
+            rotationmatrixY(1, 1) = 1;
+            rotationmatrixY(2, 0) = -sin(rotationY); rotationmatrixY(2, 2) = cos(rotationY);
+
+            // Rotation around Z-axis
+            rotationmatrixZ(0, 0) = cos(rotationZ); rotationmatrixZ(0, 1) = -sin(rotationZ);
+            rotationmatrixZ(1, 0) = sin(rotationZ); rotationmatrixZ(1, 1) = cos(rotationZ);
+            rotationmatrixZ(2, 2) = 1;
+
+            Matrix rotation = matrix_multiplication(matrix_multiplication(rotationmatrixX, rotationmatrixY), rotationmatrixZ);
 
             Matrix point(3, 1);
             point(0, 0) = points[i][0];
@@ -499,18 +514,26 @@ void handleEvents() {
 
             sf::CircleShape pointShape(1);
             for (const auto& p : points) {
-                Matrix rotation = Matrix(3, 3);
-                if (xyswap) {
-                    // Rotate around y-axis
-                    rotation(0, 0) = cos(angle); rotation(0, 2) = -sin(angle);
-                    rotation(1, 1) = 1;
-                    rotation(2, 0) = sin(angle); rotation(2, 2) = cos(angle);
-                }else {
-                    // Rotate around x-axis
-                    rotation(0, 0) = 1;
-                    rotation(1, 1) = cos(angle); rotation(1, 2) = -sin(angle);
-                    rotation(2, 1) = sin(angle); rotation(2, 2) = cos(angle);
-                }
+                Matrix rotationmatrixX = Matrix(3, 3);
+                Matrix rotationmatrixY = Matrix(3, 3);
+                Matrix rotationmatrixZ = Matrix(3, 3);
+
+                // Rotation around X-axis
+                rotationmatrixX(0, 0) = 1;
+                rotationmatrixX(1, 1) = cos(rotationX); rotationmatrixX(1, 2) = -sin(rotationX);
+                rotationmatrixX(2, 1) = sin(rotationX); rotationmatrixX(2, 2) = cos(rotationX);
+
+                // Rotation around Y-axis
+                rotationmatrixY(0, 0) = cos(rotationY); rotationmatrixY(0, 2) = sin(rotationY);
+                rotationmatrixY(1, 1) = 1;
+                rotationmatrixY(2, 0) = -sin(rotationY); rotationmatrixY(2, 2) = cos(rotationY);
+
+                // Rotation around Z-axis
+                rotationmatrixZ(0, 0) = cos(rotationZ); rotationmatrixZ(0, 1) = -sin(rotationZ);
+                rotationmatrixZ(1, 0) = sin(rotationZ); rotationmatrixZ(1, 1) = cos(rotationZ);
+                rotationmatrixZ(2, 2) = 1;
+
+                Matrix rotation = matrix_multiplication(matrix_multiplication(rotationmatrixX, rotationmatrixY), rotationmatrixZ);
 
                 Matrix point(3, 1);
                 point(0, 0) = p[0];
@@ -536,7 +559,8 @@ void handleEvents() {
         }
         window.draw(titletext);
         window.draw(songTitleText);
-        window.draw(angleText);
+        window.draw(angleTextX);
+        window.draw(angleTextY);
         window.draw(scaleText);
         window.draw(amplitudeText);
         window.draw(commandsText);
