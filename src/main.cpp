@@ -106,7 +106,8 @@ public:
           spacepress(false),
           tailon(true),
           isDragging(false),
-          lastMousePos(0, 0) {
+          lastMousePos(0, 0),
+          tailtoggle(true) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -176,7 +177,7 @@ public:
                     if(speedFactor > 0.009f){
                         speedFactor = 0.009f;
                     }
-                    std::cout << speedFactor << std::endl;
+                    // std::cout << speedFactor << std::endl;
                     adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
                 }
             }else{
@@ -225,7 +226,7 @@ private:
     float rotationX, rotationY, rotationZ;
     bool isDragging;
     sf::Vector2i lastMousePos;
-    bool tailtoggle = true;
+    bool tailtoggle;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -265,6 +266,7 @@ bool isAngleInList(float value, const std::array<float, 4> list) {
 
 void handleEvents() {
     sf::Event event;
+    bool isScrolled = true;
 
     while (window.pollEvent(event)) {
         if (event.type == sf::Event::Closed || 
@@ -293,72 +295,17 @@ void handleEvents() {
                 lastMousePos = currentMousePos;
             }
         } else if (event.type == sf::Event::MouseWheelScrolled) {
-            float scaleFactor = 5.0f;
-            if (event.mouseWheelScroll.delta > 0) {
-                scale += scaleFactor;
-            } else {
-                scale -= scaleFactor;
+            if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
+                float zoomFactor = 1.1f;
+                if (event.mouseWheelScroll.delta > 0) {
+                    scale *= zoomFactor;
+                } else {
+                    scale /= zoomFactor;
+                }
+                tailon = false;
+                isScrolled = true;
             }
-            tailon = false;
         } else if (event.type == sf::Event::KeyPressed) {
-            // TODO: make this work with new angles data structure
-            // if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-            //     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            //         if (isAngleInList(angle, angles)) {
-            //             // Move to the next angle in the sequence
-            //             for (size_t i = 0; i < angles.size(); ++i) {
-            //                 if (angles[i] == angle) {
-            //                     size_t nextIndex = (i + 1) % angles.size();
-            //                     angle = angles[nextIndex];
-            //                     offsetY = offsetYs[nextIndex];
-            //                     break;
-            //                 }
-            //             }
-            //         } else {
-            //             // Move to the closest larger angle
-            //             size_t closestIndex = 0;
-            //             float minDifference = 2 * M_PI;
-            //             for (size_t i = 0; i < angles.size(); ++i) {
-            //                 float diff = angles[i] - angle;
-            //                 if (diff > 0 && diff < minDifference) {
-            //                     minDifference = diff;
-            //                     closestIndex = i;
-            //                 }
-            //             }
-            //             angle = angles[closestIndex];
-            //             offsetY = offsetYs[closestIndex];
-            //         }
-            //         isTransitioning = true;
-            //         transitionFrames = 30;
-            //     } else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            //         if (isAngleInList(angle, angles)) {
-            //             // Move to the previous angle in the sequence
-            //             for (size_t i = 0; i < angles.size(); ++i) {
-            //                 if (angles[i] == angle) {
-            //                     size_t prevIndex = (i - 1 + angles.size()) % angles.size();
-            //                     angle = angles[prevIndex];
-            //                     offsetY = offsetYs[prevIndex];
-            //                     break;
-            //                 }
-            //             }
-            //         } else {
-            //             // Move to the closest smaller angle
-            //             size_t closestIndex = 0;
-            //             float minDifference = 2 * M_PI;
-            //             for (size_t i = 0; i < angles.size(); ++i) {
-            //                 float diff = angle - angles[i];
-            //                 if (diff > 0 && diff < minDifference) {
-            //                     minDifference = diff;
-            //                     closestIndex = i;
-            //                 }
-            //             }
-            //             angle = angles[closestIndex];
-            //             offsetY = offsetYs[closestIndex];
-            //         }
-            //         isTransitioning = true;
-            //         transitionFrames = 30;
-            //     }
-            // }
             if(event.key.code == sf::Keyboard::Space){
                 if(!spacepress){
                     spacepress = true;
@@ -379,14 +326,12 @@ void handleEvents() {
                     tailon = true;
                     tailtoggle = true;
                 }
+                std::cout << "Toggled" << std::endl;
             }
-
-        } else if(event.type != sf::Event::MouseWheelScrolled && event.type != sf::Event::MouseMoved && tailtoggle){
+        } else if(event.type != sf::Event::MouseWheelScrolled && event.type != sf::Event::MouseMoved && tailtoggle && isScrolled){
             tailon = true;
+            isScrolled = false;
         }
-        // else if(event.type == sf::Event::KeyReleased){
-        //     tailon = true;
-        // }
     }
 }
 
