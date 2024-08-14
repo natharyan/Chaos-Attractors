@@ -101,7 +101,8 @@ public:
           attractor(attractor),
           randrange(attractor.randrange),
           lastadjustedangle(attractor.angles[0]),
-          spacepress(false) {
+          spacepress(false),
+          tailon(true) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -136,7 +137,7 @@ public:
             commandsText.setCharacterSize(15);
             commandsText.setFillColor(sf::Color::White);
             commandsText.setPosition(10.f, window.getSize().y - 30.0f);
-            commandsText.setString("Commands: Space(pause), A + Left/Right(preset angles), Left/Right(rotate), Up/Down(change scale), Q(quit)");
+            commandsText.setString("Commands: T(toggle tails), Space(pause), A + Left/Right(preset angles), Left/Right(rotate), Up/Down(change scale), Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -181,7 +182,7 @@ public:
                 angleText.setString("Rotation along X-Axis: " + std::to_string(angle));
             }
             scaleText.setString("Scale: " + std::to_string(scale));
-            amplitudeText.setString("Normalized Amplitude: " + std::to_string(std::min(audioPlayer.getCurrentAmplitude() / attractor.maxamplitude, 1.0f)));
+            amplitudeText.setString("Normalized Amplitude: " + std::to_string(std::min(audioPlayer.getCurrentAmplitude() / attractor.maxamplitude, 1.0f)).substr(0, 4));
         }
     }
 
@@ -207,6 +208,8 @@ private:
     float randrange;
     float lastadjustedangle;
     bool spacepress;
+    bool tailon;
+    int counter = 0;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -215,8 +218,8 @@ private:
         std::uniform_real_distribution<float> distribution(-randrange, randrange);
         
         if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
-            for (int i = 0; i < 900; ++i) {
-                float x = (i < 450) ? -0.1f : 0.1f;
+            for (int i = 0; i < 1000; ++i) {
+                float x = (i < 500) ? -0.1f : 0.1f;
                 points.push_back({
                     x + distribution(generator) * 0.01f,
                     distribution(generator),
@@ -310,7 +313,7 @@ void handleEvents() {
                 }
             } else {
                 if (event.key.code == sf::Keyboard::Right && !sf::Keyboard::isKeyPressed(sf::Keyboard::A) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-                    angle = std::fmod(angle + 0.002f, 2 * M_PI);
+                    angle = std::fmod(angle + 0.01f, 2 * M_PI);
                     if (angle < 0) {
                         angle += 2 * M_PI;
                     }
@@ -328,7 +331,7 @@ void handleEvents() {
                 }
 
                 if (event.key.code == sf::Keyboard::Left && !sf::Keyboard::isKeyPressed(sf::Keyboard::A) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-                    angle = std::fmod(angle - 0.002f, 2 * M_PI);
+                    angle = std::fmod(angle - 0.01f, 2 * M_PI);
                     if (angle < 0) {
                         angle += 2 * M_PI;
                     }
@@ -364,12 +367,52 @@ void handleEvents() {
                     audioPlayer.sound.play();
                 }
             }
+            if(event.key.code == sf::Keyboard::T){
+                if(tailon){
+                    tailon = false;
+                }else{
+                    tailon = true;
+                }
+            }
         }
     }
 }
 
-    void updatePoints(const Attractor& attractor, std::vector<std::vector<float>>& points, 
-                      std::vector<std::vector<sf::Vertex>>& trails, size_t maxTrailSize) {
+    void updatePoints(const Attractor& attractor, std::vector<std::vector<float>>& points, std::vector<std::vector<sf::Vertex>>& trails, size_t maxTrailSize) {
+        if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
+            const size_t REALLOC_THRESHOLD = 1000; // Threshold for reallocation
+            const size_t REALLOC_INCREASE = 500;   // Number of new elements to add during reallocation
+            counter = (counter + 1) % 7;
+            if(counter%7 == 0){
+                unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+                std::default_random_engine generator(seed);
+                std::uniform_real_distribution<float> distribution(-randrange, randrange);
+                
+                // Check if we need to reallocate
+                if (points.size() + 5 > points.capacity()) {
+                    size_t newCapacity = points.capacity() + REALLOC_INCREASE;
+                    points.reserve(newCapacity);
+                    trails.reserve(newCapacity);
+                }
+                for (int i = 0; i < 5; ++i) {
+                    points.push_back({
+                        distribution(generator),
+                        distribution(generator),
+                        distribution(generator)
+                    });
+                    trails.push_back(std::vector<sf::Vertex>());
+                }
+            }
+
+            // Periodically remove excess capacity to save memory
+            if (points.size() > REALLOC_THRESHOLD && points.capacity() - points.size() > REALLOC_INCREASE) {
+                std::vector<std::vector<float>> temp_points(points.begin(), points.end());
+                points.swap(temp_points); // swap points with temp_points which has no extra memory allocation
+
+                std::vector<std::vector<sf::Vertex>> temp_trails(trails.begin(), trails.end());
+                trails.swap(temp_trails);
+            }
+        }
         for (size_t i = 0; i < points.size(); ++i) {
             points[i] = attractor.step(points[i]);
             
@@ -443,8 +486,10 @@ void handleEvents() {
         } else {
             window.clear(sf::Color::Black);
 
-            for (const auto& trail : trails) {
-                window.draw(&trail[0], trail.size(), sf::PrimitiveType::LineStrip);
+            if(tailon){
+                for (const auto& trail : trails) {
+                    window.draw(&trail[0], trail.size(), sf::PrimitiveType::LineStrip);
+                }
             }
 
             sf::CircleShape pointShape(1);

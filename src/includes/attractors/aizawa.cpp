@@ -2,14 +2,14 @@
 
 AizawaAttractor::AizawaAttractor(float dt) : Attractor(){
     this->dt = dt;
-    defdt = 0.003f;
-    scale = 350.0f;
+    defdt = 0.000005f;
+    scale = 270.0f;
     offsetX = 0.0f;
     offsetY = 0.0f;
     // angles = {M_PI, M_PI / 2 + M_PI/16, 3 * M_PI / 2 + M_PI/16, 0};
-    angles = {M_PI / 2, M_PI, 0 , 3 * M_PI / 2};
+    angles = {M_PI, M_PI / 2, 3 * M_PI / 2, 0};
     offsetYs = {0,0,0,0};
-    defaultaudio = "audio/Debussy - 2 Arabesques, CD 74, L. 66_ No. 1, Andantino con moto.mp3";
+    defaultaudio = "audio/Debussy - Clair De Lune 2009.mp3";
     xyswap = true;
     randrange = 0.01f;
     maxamplitude = 3400.0f;
@@ -23,5 +23,5 @@ std::vector<float> AizawaAttractor::step(const std::vector<float>& point) const 
 }
 
 float AizawaAttractor::speedfactor(float dt, float amplitude) const {
-    return dt + 0.001f * amplitude;
+    return dt + 0.0003f * amplitude;
 }
