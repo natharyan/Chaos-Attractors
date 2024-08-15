@@ -102,12 +102,13 @@ public:
           isTransitioning(false), transitionFrames(0),
           attractor(attractor),
           randrange(attractor.randrange),
-          lastadjustedangle(attractor.angles[0][0]), //TODO: change
           spacepress(false),
           tailon(true),
           isDragging(false),
           lastMousePos(0, 0),
-          tailtoggle(true) {
+          tailtoggle(true),
+          SCROLL_WAIT_TIME(0.4f),
+          MOUSE_WAIT_TIME(0.3f) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -147,7 +148,7 @@ public:
             commandsText.setCharacterSize(15);
             commandsText.setFillColor(sf::Color::White);
             commandsText.setPosition(10.f, window.getSize().y - 30.0f);
-            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Space(pause), Scroll(Change scale), Q(quit)");
+            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Scroll(Change scale), Space(pause), Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -168,16 +169,17 @@ public:
             if(!spacepress){
                 if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
                     float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
-                    if(speedFactor > 0.007f){
-                        speedFactor = 0.007f;
+                    if(speedFactor > 0.008f){
+                        speedFactor = 0.008f;
                     }
                     adjustedattractor = std::make_unique<LorenzAttractor>(speedFactor);
                 } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
                     float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
-                    if(speedFactor > 0.009f){
-                        speedFactor = 0.009f;
+                    if(speedFactor > 0.1f){
+                        speedFactor = 0.1f;
                     }
                     // std::cout << speedFactor << std::endl;
+                    std::cout << speedFactor << std::endl;
                     adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
                 }
             }else{
@@ -219,7 +221,6 @@ private:
     bool xyswap;
     const Attractor& attractor;
     float randrange;
-    float lastadjustedangle;
     bool spacepress;
     bool tailon;
     int counter = 0;
@@ -227,6 +228,12 @@ private:
     bool isDragging;
     sf::Vector2i lastMousePos;
     bool tailtoggle;
+    sf::Clock scrollTimer;
+    bool isWaitingAfterScroll;
+    const float SCROLL_WAIT_TIME;
+    sf::Clock mouseTimer;
+    bool isWaitingAfterMouseMove;
+    const float MOUSE_WAIT_TIME;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -255,92 +262,119 @@ private:
         return points;
     }
 
-bool isAngleInList(float value, const std::array<float, 4> list) {
-    for (float item : list) {
-        if (std::abs(item - value) < 0.001f) {
-            return true;
-        }
-    }
-    return false;
-}
-
-void handleEvents() {
-    sf::Event event;
-    bool isScrolled = true;
-
-    while (window.pollEvent(event)) {
-        if (event.type == sf::Event::Closed || 
-            (event.type == sf::Event::KeyPressed && 
-            (event.key.code == sf::Keyboard::Q))) {
-            window.close();
-        } else if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
-                isDragging = true;
-                lastMousePos = sf::Mouse::getPosition(window);
-                tailon = false;
+    bool isAngleInList(float value, const std::array<float, 4> list) {
+        for (float item : list) {
+            if (std::abs(item - value) < 0.001f) {
+                return true;
             }
-        } else if (event.type == sf::Event::MouseButtonReleased) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
-                isDragging = false;
+        }
+        return false;
+    }
+
+    void handleEvents() {
+        sf::Event event;
+        static bool isScrolled = false;
+        static bool isMouseMoved = false;
+
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed || 
+                (event.type == sf::Event::KeyPressed && 
+                (event.key.code == sf::Keyboard::Q))) {
+                window.close();
+            } else if (event.type == sf::Event::MouseButtonPressed) {
+                if (event.mouseButton.button == sf::Mouse::Left) {
+                    isDragging = true;
+                    lastMousePos = sf::Mouse::getPosition(window);
+                    tailon = false;
+                }
+            } else if (event.type == sf::Event::MouseButtonReleased) {
+                if (event.mouseButton.button == sf::Mouse::Left) {
+                    isDragging = false;
+                    isWaitingAfterMouseMove = true;
+                    mouseTimer.restart();
+                }
+            } else if (event.type == sf::Event::MouseMoved) {
+                if (isDragging) {
+                    sf::Vector2i currentMousePos = sf::Mouse::getPosition(window);
+                    sf::Vector2i delta = currentMousePos - lastMousePos;
+
+                    rotationX -= delta.y * 0.01f;
+                    rotationY += delta.x * 0.01f;
+
+                    lastMousePos = currentMousePos;
+                    tailon = false;
+                    isMouseMoved = true;
+                    isWaitingAfterMouseMove = false;
+                    mouseTimer.restart();
+                }
+            } else if (event.type == sf::Event::MouseWheelScrolled) {
+                if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
+                    float zoomFactor = 1.1f;
+                    if (event.mouseWheelScroll.delta > 0) {
+                        scale *= zoomFactor;
+                    } else {
+                        scale /= zoomFactor;
+                    }
+                    tailon = false;
+                    isScrolled = true;
+                    isWaitingAfterScroll = false;
+                    scrollTimer.restart();
+                }
+            } else if (event.type == sf::Event::KeyPressed) {
+                if(event.key.code == sf::Keyboard::Space){
+                    if(!spacepress){
+                        spacepress = true;
+                        audioPlayer.sound.pause();
+                    }else{
+                        spacepress = false;
+                        audioPlayer.sound.play();
+                    }
+                }
+                else if(event.key.code == sf::Keyboard::T){
+                    tailon = !tailon;
+                    tailtoggle = tailon;
+                    std::cout << "Toggled" << std::endl;
+                }
+            }
+        }
+
+        // check if scrolling has stopped
+        if (isScrolled && event.type != sf::Event::MouseWheelScrolled) {
+            isScrolled = false;
+            isWaitingAfterScroll = true;
+            scrollTimer.restart();
+        }
+
+        // check if mouse movement has stopped
+        if (isMouseMoved && event.type != sf::Event::MouseMoved) {
+            isMouseMoved = false;
+            isWaitingAfterMouseMove = true;
+            mouseTimer.restart();
+        }
+
+        // check if waiting period after last scroll has elapsed
+        if (isWaitingAfterScroll && scrollTimer.getElapsedTime().asSeconds() >= SCROLL_WAIT_TIME) {
+            isWaitingAfterScroll = false;
+            if (tailtoggle) {
                 tailon = true;
             }
-        } else if (event.type == sf::Event::MouseMoved) {
-            if (isDragging) {
-                sf::Vector2i currentMousePos = sf::Mouse::getPosition(window);
-                sf::Vector2i delta = currentMousePos - lastMousePos;
+        }
 
-                rotationX -= delta.y * 0.01f;
-                rotationY += delta.x * 0.01f;
-
-                lastMousePos = currentMousePos;
+        // check if waiting period after last mouse move has elapsed
+        if (isWaitingAfterMouseMove && mouseTimer.getElapsedTime().asSeconds() >= MOUSE_WAIT_TIME) {
+            isWaitingAfterMouseMove = false;
+            if (tailtoggle) {
+                tailon = true;
             }
-        } else if (event.type == sf::Event::MouseWheelScrolled) {
-            if (event.mouseWheelScroll.wheel == sf::Mouse::VerticalWheel) {
-                float zoomFactor = 1.1f;
-                if (event.mouseWheelScroll.delta > 0) {
-                    scale *= zoomFactor;
-                } else {
-                    scale /= zoomFactor;
-                }
-                tailon = false;
-                isScrolled = true;
-            }
-        } else if (event.type == sf::Event::KeyPressed) {
-            if(event.key.code == sf::Keyboard::Space){
-                if(!spacepress){
-                    spacepress = true;
-                    // pause the audio player
-                    audioPlayer.sound.pause();
-                }else{
-                    spacepress = false;
-                    // play the audio player
-                    audioPlayer.sound.play();
-                }
-            }
-            else if(event.key.code == sf::Keyboard::T){
-                if(tailon){
-                    tailon = false;
-                    // false till T is pressed again
-                    tailtoggle = false;
-                }else{
-                    tailon = true;
-                    tailtoggle = true;
-                }
-                std::cout << "Toggled" << std::endl;
-            }
-        } else if(event.type != sf::Event::MouseWheelScrolled && event.type != sf::Event::MouseMoved && tailtoggle && isScrolled){
-            tailon = true;
-            isScrolled = false;
         }
     }
-}
 
     void updatePoints(const Attractor& attractor, std::vector<std::vector<float>>& points, std::vector<std::vector<sf::Vertex>>& trails, size_t maxTrailSize) {
         if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
             const size_t REALLOC_THRESHOLD = 1000; // Threshold for reallocation
             const size_t REALLOC_INCREASE = 500;   // Number of new elements to add during reallocation
-            counter = (counter + 1) % 7;
-            if(counter%7 == 0){
+            counter = (counter + 1) % 15;
+            if(counter%15 == 0){
                 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
                 std::default_random_engine generator(seed);
                 std::uniform_real_distribution<float> distribution(-randrange, randrange);
