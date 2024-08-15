@@ -108,7 +108,7 @@ public:
           lastMousePos(0, 0),
           tailtoggle(true),
           SCROLL_WAIT_TIME(0.4f),
-          MOUSE_WAIT_TIME(0.3f),
+          MOUSE_WAIT_TIME(0.5f),
           ARROW_KEY_WAIT_TIME(0.4f) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
@@ -154,7 +154,7 @@ public:
             commandsText.setCharacterSize(15);
             commandsText.setFillColor(sf::Color::White);
             commandsText.setPosition(10.f, window.getSize().y - 30.0f);
-            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Arrow Keys(change screen offset),Scroll(Change scale), Space(pause), Q(quit)");
+            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Arrow Keys(change screen offset), Scroll(Change scale), Space(pause), R(reset), Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -162,8 +162,14 @@ public:
     void run(const Attractor& attractor) {
         std::vector<std::vector<float>> points = initializePoints();
         std::vector<std::vector<sf::Vertex>> trails(points.size());
-        const size_t maxTrailSize = 50;
-
+        const size_t maxTrailSize = 80;
+        if(dynamic_cast<const AizawaAttractor*>(&attractor)){
+            const size_t maxTrailSize = 30;
+        } else if(dynamic_cast<const SprottAttractor*>(&attractor)){
+            const size_t maxTrailSize = 200;
+        } else{
+            const size_t maxTrailSize = 40;
+        }
         while (window.isOpen()) {
             handleEvents();
             float amplitude = audioPlayer.getAmplitude();
@@ -183,15 +189,38 @@ public:
                     if(speedFactor > 0.1f){
                         speedFactor = 0.1f;
                     }
-                    // std::cout << speedFactor << std::endl;
-                    std::cout << speedFactor << std::endl;
                     adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
+                    std::cout << speedFactor << std::endl;
+                } else if(dynamic_cast<const ThomasAttractor*>(&attractor)){
+                    float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
+                    if(speedFactor > 0.3f){
+                        speedFactor = 0.3f;
+                    }
+                    adjustedattractor = std::make_unique<ThomasAttractor>(speedFactor);
+                } else if(dynamic_cast<const HalvorsenAttractor*>(&attractor)){
+                    float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
+                    if(speedFactor > 0.3f){
+                        speedFactor = 0.3f;
+                    }
+                    adjustedattractor = std::make_unique<HalvorsenAttractor>(speedFactor);
+                } else if(dynamic_cast<const SprottAttractor*>(&attractor)){
+                    float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
+                    if(speedFactor > 0.1f){
+                        speedFactor = 0.1f;
+                    }
+                    adjustedattractor = std::make_unique<SprottAttractor>(speedFactor);
                 }
             }else{
                 if (dynamic_cast<const LorenzAttractor*>(&attractor)) {
                     adjustedattractor = std::make_unique<LorenzAttractor>(0.0f);
                 } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
                     adjustedattractor = std::make_unique<AizawaAttractor>(0.0f);
+                } else if(dynamic_cast<const ThomasAttractor*>(&attractor)){
+                    adjustedattractor = std::make_unique<ThomasAttractor>(0.0f);
+                } else if(dynamic_cast<const HalvorsenAttractor*>(&attractor)){
+                    adjustedattractor = std::make_unique<HalvorsenAttractor>(0.0f);
+                } else if(dynamic_cast<const SprottAttractor*>(&attractor)){
+                    adjustedattractor = std::make_unique<SprottAttractor>(0.0f);
                 }
             }
             updatePoints(*adjustedattractor, points, trails, maxTrailSize);
@@ -259,8 +288,32 @@ private:
                     distribution(generator)
                 });
             }
-        } else if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
+        } else if(dynamic_cast<const AizawaAttractor*>(&attractor)){
             for (int i = 0; i < 500; ++i) {
+                points.push_back({
+                    distribution(generator),
+                    distribution(generator),
+                    distribution(generator)
+                });
+            }
+        } else if(dynamic_cast<const ThomasAttractor*>(&attractor)){
+            for (int i = 0; i < 800; ++i) {
+                points.push_back({
+                    distribution(generator),
+                    distribution(generator),
+                    distribution(generator)
+                });
+            }
+        } else if(dynamic_cast<const HalvorsenAttractor*>(&attractor)){
+            for (int i = 0; i < 800; ++i) {
+                points.push_back({
+                    distribution(generator),
+                    distribution(generator),
+                    distribution(generator)
+                });
+            }
+        } else if(dynamic_cast<const SprottAttractor*>(&attractor)){
+            for (int i = 0; i < 800; ++i) {
                 points.push_back({
                     distribution(generator),
                     distribution(generator),
@@ -367,6 +420,12 @@ private:
                     tailon = false;
                     isArrowKeyPressed = true;
                     arrowKeyTimer.restart();
+                } else if(event.key.code == sf::Keyboard::R){
+                    rotationX = angles[0][0];
+                    rotationY = angles[0][1];
+                    offsetX = attractor.offsetX;
+                    offsetY = attractor.offsetY;
+                    scale = attractor.scale;
                 }
             }
         }
@@ -409,19 +468,19 @@ private:
         if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
             const size_t REALLOC_THRESHOLD = 1000; // threshold for reallocation
             const size_t REALLOC_INCREASE = 500;   // number of new elements to add during reallocation
-            counter = (counter + 1) % 100;
-            if(counter%100 == 0){
+            counter = (counter + 1) % 20;
+            if(counter%20 == 0){
                 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
                 std::default_random_engine generator(seed);
                 std::uniform_real_distribution<float> distribution(-randrange, randrange);
                 
                 // check if we need to reallocate
-                if (points.size() + 60 > points.capacity()) {
+                if (points.size() + 5 > points.capacity()) {
                     size_t newCapacity = points.capacity() + REALLOC_INCREASE;
                     points.reserve(newCapacity);
                     trails.reserve(newCapacity);
                 }
-                for (int i = 0; i < 60; ++i) {
+                for (int i = 0; i < 5; ++i) {
                     points.push_back({
                         distribution(generator),
                         distribution(generator),
@@ -440,6 +499,11 @@ private:
                 trails.swap(temp_trails);
             }
         }
+
+        if(dynamic_cast<const SprottAttractor*>(&attractor)){
+            rotationX += 0.0001f;
+        }
+
         for (size_t i = 0; i < points.size(); ++i) {
             points[i] = attractor.step(points[i]);
             
@@ -488,17 +552,19 @@ private:
             }
 
             for (size_t j = 0; j < trails[i].size(); ++j) {
-                float alpha = static_cast<float>(j) / trails[i].size() * 255.0f;
+                float alpha = static_cast<float>(j) / trails[i].size() * 70.0f;
                 trails[i][j].color.a = static_cast<sf::Uint8>(alpha);
             }
         }
     }
 
     sf::Color lerpColor(const sf::Color& start, const sf::Color& end, float t) {
+        // add alpha to this function
         return sf::Color(
             static_cast<sf::Uint8>(start.r + t * (end.r - start.r)),
             static_cast<sf::Uint8>(start.g + t * (end.g - start.g)),
-            static_cast<sf::Uint8>(start.b + t * (end.b - start.b))
+            static_cast<sf::Uint8>(start.b + t * (end.b - start.b)),
+            120
         );
     }
 
@@ -527,7 +593,7 @@ private:
                 }
             }
 
-            sf::CircleShape pointShape(1.5);
+            sf::CircleShape pointShape(1);
             for (const auto& p : points) {
                 Matrix rotationmatrixX = Matrix(3, 3);
                 Matrix rotationmatrixY = Matrix(3, 3);
@@ -586,15 +652,19 @@ private:
 
 int main() {
     AudioPlayer audioPlayer;
-    sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
-    std::cout << "Attractors:" << std::endl;
-    std::cout << "1. Lorenz" << std::endl;
-    std::cout << "2. Aizawa" << std::endl;
-    std::cout << "Enter Attractor: ";
     std::string attractorchoice;
-    std::cin >> attractorchoice;
     std::unique_ptr<Attractor> attractor;
     std::string title;
+    sf::VideoMode desktopMode = sf::VideoMode::getFullscreenModes()[0];
+    std::cout << std::endl << "==== Chaos Attractor Music Visualizer ====" << std::endl;
+    std::cout << "Available Attractors:" << std::endl;
+    std::cout << "1. Thomas" << std::endl;
+    std::cout << "2. Halvorsen" << std::endl;
+    std::cout << "3. Sprott" << std::endl;
+    std::cout << "4. Aizawa" << std::endl;
+    std::cout << "5. Lorenz" << std::endl;
+    std::cout << "Enter the name of an attractor: ";
+    std::cin >> attractorchoice;
 
     if(attractorchoice == "Lorenz") {
         attractor = std::make_unique<LorenzAttractor>(lorenz_defdt);
@@ -602,9 +672,17 @@ int main() {
     } else if(attractorchoice == "Aizawa") {
         attractor = std::make_unique<AizawaAttractor>(aizawa_defdt);
         title = "Aizawa Attractor";
+    } else if(attractorchoice == "Thomas") {
+        attractor = std::make_unique<ThomasAttractor>(thomas_defdt);
+        title = "Thomas Attractor";
+    } else if(attractorchoice == "Halvorsen") {
+        attractor = std::make_unique<HalvorsenAttractor>(halvorsen_defdt);
+        title = "Halvorsen Attractor";
+    } else if(attractorchoice == "Sprott") {
+        attractor = std::make_unique<SprottAttractor>(sprott_defdt);
+        title = "Sprott Attractor";
     } else {
-        std::cerr << "Invalid attractor choice." << std::endl;
-        return 1;
+        std::cout << "Invalid attractor choice. Please try again.";
     }
 
     if (!audioPlayer.loadAndPlay(attractor->defaultaudio)) {
@@ -614,6 +692,7 @@ int main() {
 
     Visualization vis(desktopMode.width, desktopMode.height, title, audioPlayer, *attractor);
     vis.run(*attractor);
+    audioPlayer.sound.stop();
 
     return 0;
 }
