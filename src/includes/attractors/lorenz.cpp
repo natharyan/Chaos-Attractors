@@ -3,9 +3,9 @@
 LorenzAttractor::LorenzAttractor(float dt) : Attractor(){
     this->dt = dt;
     defdt = 0.0005f;
-    scale = 23.0f;
+    scale = 17.0f;
     offsetX = 0.0f;
-    offsetY = 580.0f;
+    offsetY = 210.0f;
     angles = {{M_PI / 2, 0, 0}, {0, 0, 0}, {M_PI, 0, 0}, {3 * M_PI / 2, 0, 0}};
     offsetYs = {580, 10, 10, -580};
     defaultaudio = "audio/Debussy - Dances for Harp and Orchestra Danse profane.mp3";

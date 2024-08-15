@@ -117,22 +117,27 @@ public:
             titletext.setCharacterSize(15);
             titletext.setFillColor(sf::Color::White);
             titletext.setString("Attractor: " + title);
-            titletext.setPosition(10.f, window.getSize().y - 150.0f);
+            titletext.setPosition(10.f, window.getSize().y - 170.0f);
 
             songTitleText.setFont(font);
             songTitleText.setCharacterSize(15);
             songTitleText.setFillColor(sf::Color::White);
-            songTitleText.setPosition(10.f, window.getSize().y - 130.0f);
+            songTitleText.setPosition(10.f, window.getSize().y - 150.0f);
 
             angleTextX.setFont(font);
             angleTextX.setCharacterSize(15);
             angleTextX.setFillColor(sf::Color::White);
-            angleTextX.setPosition(10.f, window.getSize().y - 110.0f);
+            angleTextX.setPosition(10.f, window.getSize().y - 130.0f);
 
             angleTextY.setFont(font);
             angleTextY.setCharacterSize(15);
             angleTextY.setFillColor(sf::Color::White);
-            angleTextY.setPosition(10.f, window.getSize().y - 90.0f);
+            angleTextY.setPosition(10.f, window.getSize().y - 110.0f);
+
+            offsetText.setFont(font);
+            offsetText.setCharacterSize(15);
+            offsetText.setFillColor(sf::Color::White);
+            offsetText.setPosition(10.f, window.getSize().y - 90.0f);
 
             scaleText.setFont(font);
             scaleText.setCharacterSize(15);
@@ -160,7 +165,6 @@ public:
 
         while (window.isOpen()) {
             handleEvents();
-            // std::cout << "Amplitude: " << amplitude << ", SpeedFactor: " << speedFactor << std::endl;
             float amplitude = audioPlayer.getAmplitude();
             if(amplitude > 800.0f){
                 amplitude = 800.0f;
@@ -195,6 +199,7 @@ public:
             songTitleText.setString("Now Playing: " + audioPlayer.getSongTitle());
             angleTextX.setString("Rotation along X-Axis: " + std::to_string(rotationX));
             angleTextY.setString("Rotation along Y-Axis: " + std::to_string(rotationY));
+            offsetText.setString("OffsetX: " + std::to_string(offsetX) + " OffsetY: " + std::to_string(offsetY));
             scaleText.setString("Scale: " + std::to_string(scale));
             amplitudeText.setString("Normalized Amplitude: " + std::to_string(std::min(audioPlayer.getCurrentAmplitude() / attractor.maxamplitude, 1.0f)).substr(0, 4));
         }
@@ -216,6 +221,7 @@ private:
     sf::Text scaleText;
     sf::Text amplitudeText;
     sf::Text commandsText;
+    sf::Text offsetText;
     bool isTransitioning;
     int transitionFrames;
     bool xyswap;
@@ -329,11 +335,22 @@ private:
                         spacepress = false;
                         audioPlayer.sound.play();
                     }
-                }
-                else if(event.key.code == sf::Keyboard::T){
+                } else if(event.key.code == sf::Keyboard::T){
                     tailon = !tailon;
                     tailtoggle = tailon;
                     std::cout << "Toggled" << std::endl;
+                } else if(event.key.code == sf::Keyboard::Right)
+                {
+                    offsetX += 10.0f;
+                } else if(event.key.code == sf::Keyboard::Left)
+                {
+                    offsetX -= 10.0f;
+                }else if(event.key.code == sf::Keyboard::Up)
+                {
+                    offsetY += 10.0f;
+                }else if(event.key.code == sf::Keyboard::Down)
+                {
+                    offsetY -= 10.0f;
                 }
             }
         }
@@ -371,21 +388,21 @@ private:
 
     void updatePoints(const Attractor& attractor, std::vector<std::vector<float>>& points, std::vector<std::vector<sf::Vertex>>& trails, size_t maxTrailSize) {
         if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
-            const size_t REALLOC_THRESHOLD = 1000; // Threshold for reallocation
-            const size_t REALLOC_INCREASE = 500;   // Number of new elements to add during reallocation
-            counter = (counter + 1) % 15;
-            if(counter%15 == 0){
+            const size_t REALLOC_THRESHOLD = 1000; // threshold for reallocation
+            const size_t REALLOC_INCREASE = 500;   // number of new elements to add during reallocation
+            counter = (counter + 1) % 100;
+            if(counter%100 == 0){
                 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
                 std::default_random_engine generator(seed);
                 std::uniform_real_distribution<float> distribution(-randrange, randrange);
                 
-                // Check if we need to reallocate
-                if (points.size() + 5 > points.capacity()) {
+                // check if we need to reallocate
+                if (points.size() + 60 > points.capacity()) {
                     size_t newCapacity = points.capacity() + REALLOC_INCREASE;
                     points.reserve(newCapacity);
                     trails.reserve(newCapacity);
                 }
-                for (int i = 0; i < 5; ++i) {
+                for (int i = 0; i < 60; ++i) {
                     points.push_back({
                         distribution(generator),
                         distribution(generator),
@@ -395,7 +412,7 @@ private:
                 }
             }
 
-            // Periodically remove excess capacity to save memory
+            // periodically remove excess capacity to save memory
             if (points.size() > REALLOC_THRESHOLD && points.capacity() - points.size() > REALLOC_INCREASE) {
                 std::vector<std::vector<float>> temp_points(points.begin(), points.end());
                 points.swap(temp_points); // swap points with temp_points which has no extra memory allocation
@@ -441,7 +458,7 @@ private:
 
             Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
-            float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
+            float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f - offsetX;
             float screenY = projected2d(1, 0) * scale + window.getSize().y / 2.0f + offsetY;
 
             sf::Vector2f screenPos(screenX, screenY);
@@ -491,7 +508,7 @@ private:
                 }
             }
 
-            sf::CircleShape pointShape(1);
+            sf::CircleShape pointShape(1.5);
             for (const auto& p : points) {
                 Matrix rotationmatrixX = Matrix(3, 3);
                 Matrix rotationmatrixY = Matrix(3, 3);
@@ -527,7 +544,7 @@ private:
                 
                 Matrix projected2d = matrix_multiplication(projection_matrix, rotated_2d);
 
-                float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f + offsetX;
+                float screenX = projected2d(0, 0) * scale + window.getSize().x / 2.0f - offsetX;
                 float screenY = projected2d(1, 0) * scale + window.getSize().y / 2.0f + offsetY;
 
                 pointShape.setPosition(screenX - pointShape.getRadius(), screenY - pointShape.getRadius());
@@ -543,6 +560,7 @@ private:
         window.draw(scaleText);
         window.draw(amplitudeText);
         window.draw(commandsText);
+        window.draw(offsetText);
         window.display();
     }
 };
