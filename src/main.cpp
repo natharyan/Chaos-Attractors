@@ -108,7 +108,8 @@ public:
           lastMousePos(0, 0),
           tailtoggle(true),
           SCROLL_WAIT_TIME(0.4f),
-          MOUSE_WAIT_TIME(0.3f) {
+          MOUSE_WAIT_TIME(0.3f),
+          ARROW_KEY_WAIT_TIME(0.4f) {
 
             if (!font.loadFromFile("font/RobotoMono-Regular.ttf")) {
                 std::cerr << "Error loading font" << std::endl;
@@ -153,7 +154,7 @@ public:
             commandsText.setCharacterSize(15);
             commandsText.setFillColor(sf::Color::White);
             commandsText.setPosition(10.f, window.getSize().y - 30.0f);
-            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Scroll(Change scale), Space(pause), Q(quit)");
+            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Arrow Keys(change screen offset),Scroll(Change scale), Space(pause), Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -240,6 +241,8 @@ private:
     sf::Clock mouseTimer;
     bool isWaitingAfterMouseMove;
     const float MOUSE_WAIT_TIME;
+    sf::Clock arrowKeyTimer;
+    const float ARROW_KEY_WAIT_TIME;
 
     std::vector<std::vector<float>> initializePoints() {
         std::vector<std::vector<float>> points;
@@ -281,6 +284,7 @@ private:
         sf::Event event;
         static bool isScrolled = false;
         static bool isMouseMoved = false;
+        static bool isArrowKeyPressed = false;
 
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed || 
@@ -342,33 +346,42 @@ private:
                 } else if(event.key.code == sf::Keyboard::Right)
                 {
                     offsetX += 10.0f;
+                    tailon = false;
+                    isArrowKeyPressed = true;
+                    arrowKeyTimer.restart();
                 } else if(event.key.code == sf::Keyboard::Left)
                 {
                     offsetX -= 10.0f;
+                    tailon = false;
+                    isArrowKeyPressed = true;
+                    arrowKeyTimer.restart();
                 }else if(event.key.code == sf::Keyboard::Up)
                 {
                     offsetY += 10.0f;
+                    tailon = false;
+                    isArrowKeyPressed = true;
+                    arrowKeyTimer.restart();
                 }else if(event.key.code == sf::Keyboard::Down)
                 {
                     offsetY -= 10.0f;
+                    tailon = false;
+                    isArrowKeyPressed = true;
+                    arrowKeyTimer.restart();
                 }
             }
         }
-
         // check if scrolling has stopped
         if (isScrolled && event.type != sf::Event::MouseWheelScrolled) {
             isScrolled = false;
             isWaitingAfterScroll = true;
             scrollTimer.restart();
         }
-
         // check if mouse movement has stopped
         if (isMouseMoved && event.type != sf::Event::MouseMoved) {
             isMouseMoved = false;
             isWaitingAfterMouseMove = true;
             mouseTimer.restart();
         }
-
         // check if waiting period after last scroll has elapsed
         if (isWaitingAfterScroll && scrollTimer.getElapsedTime().asSeconds() >= SCROLL_WAIT_TIME) {
             isWaitingAfterScroll = false;
@@ -376,10 +389,16 @@ private:
                 tailon = true;
             }
         }
-
         // check if waiting period after last mouse move has elapsed
         if (isWaitingAfterMouseMove && mouseTimer.getElapsedTime().asSeconds() >= MOUSE_WAIT_TIME) {
             isWaitingAfterMouseMove = false;
+            if (tailtoggle) {
+                tailon = true;
+            }
+        }
+        // check if waiting period after last arrow key press has elapsed
+        if (isArrowKeyPressed && arrowKeyTimer.getElapsedTime().asSeconds() >= ARROW_KEY_WAIT_TIME) {
+            isArrowKeyPressed = false;
             if (tailtoggle) {
                 tailon = true;
             }
