@@ -162,7 +162,7 @@ public:
     void run(const Attractor& attractor) {
         std::vector<std::vector<float>> points = initializePoints();
         std::vector<std::vector<sf::Vertex>> trails(points.size());
-        const size_t maxTrailSize = 30;
+        const size_t maxTrailSize = 50;
 
         while (window.isOpen()) {
             handleEvents();
