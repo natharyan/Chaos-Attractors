@@ -5,13 +5,15 @@ LorenzAttractor::LorenzAttractor(float dt) : Attractor(){
     defdt = 0.0005f;
     scale = 17.0f;
     offsetX = 0.0f;
-    offsetY = 300.0f;
+    offsetY = 380.0f;
     angles = {{M_PI / 2, 0, 0}, {0, 0, 0}, {M_PI, 0, 0}, {3 * M_PI / 2, 0, 0}};
-    offsetYs = {580, 10, 10, -580};
+    offsetYs = {300, 10, 10, -300};
     defaultaudio = "audio/Debussy - Dances for Harp and Orchestra Danse profane.mp3";
     xyswap = false;
     randrange = 0.2f;
     maxamplitude = 3500.0f;
+    startColor = sf::Color(115, 210, 222);
+    endColor = sf::Color(216, 17, 89);
 }
 
 std::vector<float> LorenzAttractor::step(const std::vector<float>& point) const {

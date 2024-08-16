@@ -166,6 +166,8 @@ public:
             const size_t maxTrailSize = 30;
         } else if(dynamic_cast<const SprottAttractor*>(&attractor)){
             const size_t maxTrailSize = 800;
+        } else if(dynamic_cast<const LorenzAttractor*>(&attractor)){
+            const size_t maxTrailSize = 20;
         } else{
             const size_t maxTrailSize = 40;
         }

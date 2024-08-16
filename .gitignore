@@ -2,3 +2,5 @@ reference/
 .vscode/
 .venv/
 build/
+CMakeLists.txt
+Info.plist
