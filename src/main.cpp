@@ -289,7 +289,7 @@ private:
                 });
             }
         } else if(dynamic_cast<const AizawaAttractor*>(&attractor)){
-            for (int i = 0; i < 500; ++i) {
+            for (int i = 0; i < 200; ++i) {
                 points.push_back({
                     distribution(generator),
                     distribution(generator),
@@ -469,19 +469,19 @@ private:
         if (dynamic_cast<const AizawaAttractor*>(&attractor)) {
             const size_t REALLOC_THRESHOLD = 1000; // threshold for reallocation
             const size_t REALLOC_INCREASE = 500;   // number of new elements to add during reallocation
-            counter = (counter + 1) % 20;
-            if(counter%20 == 0){
+            counter = (counter + 1) % 40;
+            if(counter%40 == 0){
                 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
                 std::default_random_engine generator(seed);
-                std::uniform_real_distribution<float> distribution(-randrange, randrange);
+                std::uniform_real_distribution<float> distribution(-10 * randrange, 10 * randrange);
                 
                 // check if we need to reallocate
-                if (points.size() + 5 > points.capacity()) {
+                if (points.size() + 10 > points.capacity()) {
                     size_t newCapacity = points.capacity() + REALLOC_INCREASE;
                     points.reserve(newCapacity);
                     trails.reserve(newCapacity);
                 }
-                for (int i = 0; i < 5; ++i) {
+                for (int i = 0; i < 10; ++i) {
                     points.push_back({
                         distribution(generator),
                         distribution(generator),
