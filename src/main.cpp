@@ -102,6 +102,7 @@ public:
           randrange(attractor.randrange),
           spacepress(false),
           tailon(true),
+          menu(true),
           isDragging(false),
           lastMousePos(0, 0),
           tailtoggle(true),
@@ -152,7 +153,7 @@ public:
             commandsText.setCharacterSize(15);
             commandsText.setFillColor(sf::Color::White);
             commandsText.setPosition(10.f, window.getSize().y - 30.0f);
-            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Arrow Keys(change screen offset), Scroll(Change scale), Space(pause), R(reset), Q(quit)");
+            commandsText.setString("Commands: Mouse Drag(rotate along axes), T(toggle tails), Arrow Keys(change screen offset), Scroll(Change scale), Space(pause), R(reset), M(toggle menu), Q(quit)");
 
             window.setFramerateLimit(60);
         }
@@ -164,7 +165,7 @@ public:
         if(dynamic_cast<const AizawaAttractor*>(&attractor)){
             const size_t maxTrailSize = 30;
         } else if(dynamic_cast<const SprottAttractor*>(&attractor)){
-            const size_t maxTrailSize = 200;
+            const size_t maxTrailSize = 800;
         } else{
             const size_t maxTrailSize = 40;
         }
@@ -257,6 +258,7 @@ private:
     float randrange;
     bool spacepress;
     bool tailon;
+    bool menu;
     int counter = 0;
     float rotationX, rotationY, rotationZ;
     bool isDragging;
@@ -393,7 +395,6 @@ private:
                 } else if(event.key.code == sf::Keyboard::T){
                     tailon = !tailon;
                     tailtoggle = tailon;
-                    std::cout << "Toggled" << std::endl;
                 } else if(event.key.code == sf::Keyboard::Right)
                 {
                     offsetX += 10.0f;
@@ -424,6 +425,8 @@ private:
                     offsetX = attractor.offsetX;
                     offsetY = attractor.offsetY;
                     scale = attractor.scale;
+                } else if(event.key.code == sf::Keyboard::M){
+                    menu = !menu;
                 }
             }
         }
@@ -499,7 +502,8 @@ private:
         }
 
         if(dynamic_cast<const SprottAttractor*>(&attractor)){
-            rotationX += 0.0001f;
+            rotationX += 0.0003f;
+            rotationY += 0.0001f;
         }
 
         for (size_t i = 0; i < points.size(); ++i) {
@@ -641,15 +645,25 @@ private:
             }
 
         }
-        window.draw(titletext);
-        window.draw(songTitleText);
-        window.draw(angleTextX);
-        window.draw(angleTextY);
-        window.draw(scaleText);
-        window.draw(amplitudeText);
-        window.draw(commandsText);
-        window.draw(offsetText);
-        window.display();
+        if(menu){
+            titletext.setPosition(10.f, window.getSize().y - 170.0f);
+            songTitleText.setPosition(10.f, window.getSize().y - 150.0f);
+            window.draw(titletext);
+            window.draw(songTitleText);
+            window.draw(angleTextX);
+            window.draw(angleTextY);
+            window.draw(scaleText);
+            window.draw(amplitudeText);
+            window.draw(commandsText);
+            window.draw(offsetText);
+            window.display();
+        } else{
+            titletext.setPosition(10.f, window.getSize().y - 50.0f);
+            songTitleText.setPosition(10.f, window.getSize().y - 30.0f);
+            window.draw(titletext);
+            window.draw(songTitleText);
+            window.display();
+        }
     }
 };
 

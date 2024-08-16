@@ -9,10 +9,12 @@ SprottAttractor::SprottAttractor(float dt) : Attractor(){
     // angles = {M_PI, M_PI / 2 + M_PI/16, 3 * M_PI / 2 + M_PI/16, 0};
     angles = {{M_PI / 2, M_PI, 0}, {0, M_PI / 2, 0}, {0, 3 * M_PI / 2, 0}, {0, 0, 0}};
     offsetYs = {0,0,0,0};
-    defaultaudio = "audio/Debussy - Clair De Lune 2009.mp3";
+    defaultaudio = "audio/Ravel - Pavane pour une infante défunte - M. 19.mp3";
     xyswap = true;
-    randrange = 0.06f;
-    maxamplitude = 2000.0f;
+    randrange = 0.02f;
+    maxamplitude = 2500.0f;
+    startColor = sf::Color(128, 0, 32);
+    endColor = sf::Color(245,245,220);
 }
 
 std::vector<float> SprottAttractor::step(const std::vector<float>& point) const {
@@ -23,5 +25,5 @@ std::vector<float> SprottAttractor::step(const std::vector<float>& point) const 
 }
 
 float SprottAttractor::speedfactor(float dt, float amplitude) const {
-    return dt + 0.00004f * amplitude;
+    return dt + 0.00002f * amplitude;
 }
