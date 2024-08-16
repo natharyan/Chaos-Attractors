@@ -8,10 +8,12 @@ HalvorsenAttractor::HalvorsenAttractor(float dt) : Attractor() {
     offsetY = 0.0f;
     angles = {{9.79f, -0.82f, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
     offsetYs = {0,0,0,0};
-    defaultaudio = "audio/Debussy - Clair De Lune 2009.mp3";
+    defaultaudio = "audio/Grieg -  Peer Gynt Suite No. 1 Op. 46 - I.mp3";
     xyswap = false;
     randrange = 0.02f;
     maxamplitude = 2500.0f;
+    startColor = sf::Color(193, 241, 255);
+    endColor = sf::Color(239, 204, 144);
 }
 
 std::vector<float> HalvorsenAttractor::step(const std::vector<float>& point) const {
@@ -22,5 +24,5 @@ std::vector<float> HalvorsenAttractor::step(const std::vector<float>& point) con
 }
 
 float HalvorsenAttractor::speedfactor(float dt, float amplitude) const {
-    return dt + 0.000008f * amplitude;
+    return dt + 0.00001f * amplitude;
 }

@@ -6,6 +6,7 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <SFML/Graphics.hpp>
 
 class Attractor {
 public:
@@ -24,6 +25,8 @@ public:
     bool xyswap;
     float randrange;
     float maxamplitude;
+    sf::Color startColor;
+    sf::Color endColor;
 };;
 
 #endif // ATTRACTOR_H

@@ -9,7 +9,7 @@
 
 float lorenz_defdt = 0.0005f;
 float aizawa_defdt = 0.0000005f;
-float thomas_defdt = 0.0005f;
+float thomas_defdt = 0.003f;
 float halvorsen_defdt = 0.00035f;
 float sprott_defdt = 0.0000005f;
 

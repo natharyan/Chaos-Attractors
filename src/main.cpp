@@ -6,8 +6,6 @@
 #include <random>
 #include <filesystem>
 #include "includes/matrix.h"
-#include <RtAudio.h>
-#include <fftw3.h>
 #include "includes/attractors/attractors.h"
 #include "includes/attractors/base_attractor.h"
 #include <string>
@@ -190,12 +188,12 @@ public:
                         speedFactor = 0.1f;
                     }
                     adjustedattractor = std::make_unique<AizawaAttractor>(speedFactor);
-                    std::cout << speedFactor << std::endl;
                 } else if(dynamic_cast<const ThomasAttractor*>(&attractor)){
                     float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
                     if(speedFactor > 0.3f){
                         speedFactor = 0.3f;
                     }
+                    std::cout << speedFactor << std::endl;
                     adjustedattractor = std::make_unique<ThomasAttractor>(speedFactor);
                 } else if(dynamic_cast<const HalvorsenAttractor*>(&attractor)){
                     float speedFactor = attractor.speedfactor(attractor.defdt, amplitude);
@@ -226,7 +224,7 @@ public:
             updatePoints(*adjustedattractor, points, trails, maxTrailSize);
             render(points, trails);
 
-            songTitleText.setString("Now Playing: " + audioPlayer.getSongTitle());
+            songTitleText.setString("Song: " + audioPlayer.getSongTitle());
             angleTextX.setString("Rotation along X-Axis: " + std::to_string(rotationX));
             angleTextY.setString("Rotation along Y-Axis: " + std::to_string(rotationY));
             offsetText.setString("OffsetX: " + std::to_string(offsetX) + " OffsetY: " + std::to_string(offsetY));
@@ -361,8 +359,8 @@ private:
                     sf::Vector2i currentMousePos = sf::Mouse::getPosition(window);
                     sf::Vector2i delta = currentMousePos - lastMousePos;
 
-                    rotationX -= delta.y * 0.01f;
-                    rotationY += delta.x * 0.01f;
+                    rotationX -= delta.y * 0.006f;
+                    rotationY -= delta.x * 0.006f;
 
                     lastMousePos = currentMousePos;
                     tailon = false;
@@ -550,31 +548,36 @@ private:
             if (trails[i].size() > maxTrailSize) {
                 trails[i].erase(trails[i].begin());
             }
-
-            for (size_t j = 0; j < trails[i].size(); ++j) {
-                float alpha = static_cast<float>(j) / trails[i].size() * 70.0f;
-                trails[i][j].color.a = static_cast<sf::Uint8>(alpha);
+            if(dynamic_cast<const ThomasAttractor*>(&attractor)){
+                for (size_t j = 0; j < trails[i].size(); ++j) {
+                    float alpha = static_cast<float>(j) / trails[i].size() * 100.0f;
+                    trails[i][j].color.a = static_cast<sf::Uint8>(alpha);
+                }
+            } else{
+                for (size_t j = 0; j < trails[i].size(); ++j) {
+                    float alpha = static_cast<float>(j) / trails[i].size() * 70.0f;
+                    trails[i][j].color.a = static_cast<sf::Uint8>(alpha);
+                }
             }
+            
         }
     }
 
     sf::Color lerpColor(const sf::Color& start, const sf::Color& end, float t) {
-        // add alpha to this function
+        // add alpha value
         return sf::Color(
             static_cast<sf::Uint8>(start.r + t * (end.r - start.r)),
             static_cast<sf::Uint8>(start.g + t * (end.g - start.g)),
             static_cast<sf::Uint8>(start.b + t * (end.b - start.b)),
-            120
+            160
         );
     }
 
     sf::Color getColorForAmplitude(float amplitude) {
         float normalizedAmplitude = std::min(amplitude / attractor.maxamplitude, 1.0f);
-        // sf::Color startColor(0, 0, 255);
-        // sf::Color endColor(255, 0, 0);
-        sf::Color startColor(115, 210, 222);
-        sf::Color endColor(216, 17, 89);
-        return lerpColor(startColor, endColor, normalizedAmplitude);
+        // sf::Color startColor(115, 210, 222);
+        // sf::Color endColor(216, 17, 89);
+        return lerpColor(attractor.startColor, attractor.endColor, normalizedAmplitude);
     }
 
     void render(const std::vector<std::vector<float>>& points, const std::vector<std::vector<sf::Vertex>>& trails) {
@@ -683,6 +686,7 @@ int main() {
         title = "Sprott Attractor";
     } else {
         std::cout << "Invalid attractor choice. Please try again.";
+        return 1;
     }
 
     if (!audioPlayer.loadAndPlay(attractor->defaultaudio)) {
