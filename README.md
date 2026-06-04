@@ -2,6 +2,8 @@
 
 An interactive music visualizer in which the positions of a set of points in 3D space are evolved using the differential equations of a chaotic attractor, with the instantaneous audio amplitude determining the integration time step.
 
+https://github.com/user-attachments/assets/6295660d-abaa-4516-a0ad-e891baf0979e
+
 ## Features
 - Real-time audio responsiveness
 - Adaptive color changes based on the audio's amplitude
