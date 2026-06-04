@@ -1,6 +1,17 @@
 reference/
 .vscode/
 .venv/
-build/
-CMakeLists.txt
-Info.plist
+
+# Build artifacts
+/bin/
+/*.app
+
+# Objects and dependencies
+*.o
+*.o.d
+
+# macOS
+.DS_Store
+
+# Reference files
+reference/

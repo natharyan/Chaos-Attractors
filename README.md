@@ -1,11 +1,13 @@
-# Chaos Attractor Music Visualizer
+# Chaotic Attractor Music Visualizer
+
+An interactive music visualizer in which the positions of a set of points in 3D space are evolved using the differential equations of a chaotic attractor, with the instantaneous audio amplitude determining the integration time step.
 
 ## Features
 - Real-time audio responsiveness
 - Adaptive color changes based on the audio's amplitude
 - Interactive XY plane rotation and zooming controls
 
-## Chaos Attractors
+## Chaotic Attractors
 - Thomas Attractor
 - Halvorsen Attractor
 - Sprott Attractor
@@ -16,7 +18,7 @@
 - Clone the repository
 
   ```bash
-  git clone https://github.com/natharyan/Chaos-Attractors
+  git clone https://github.com/natharyan/chaotic-attractors
   ```
 
 ### Install SFML(MacOS)
@@ -51,33 +53,45 @@ brew install sfml
 - Follow this video: https://www.youtube.com/watch?v=Ptw1KKI9_Sg
 
 ## Usage
+
 - Navigate to the repository on your terminal
 
   ```bash
-  cd ./Downloads/Chaos-Attractors
+  cd /path/to/chaotic-attractors
   ```
 
-- After following the installation instructions, run the MakeFile
+### Build (Makefile)
 
-  ```bash
-  Chaos-Attractors: make
-  ```
+Build the project using the simple `Makefile`:
 
-- Run the executable
+```bash
+make            # builds (uses SFML_PATH default or override)
+```
 
-  ```bash
-  ./bin/app
-  ```
+If your SFML installation is in a custom location, set `SFML_PATH`:
 
-- `Click and drag your mouse` to change the rotation of the visualizer along the x and y axis
+```bash
+SFML_PATH=/path/to/sfml make
+```
+
+### Run
+
+Run the built executable:
+
+```bash
+./bin/app
+```
+
+### Controls
+
+- Click and drag your mouse to change the rotation of the visualizer along the x and y axis
 - Press `T` to toggle the tails in the visualizer
-- Use your `arrow keys` to change x and y offset of the screen
-- Use your `mouse scroll` to change the scale of the visualizer screen
+- Use your arrow keys to change x and y offset of the screen
+- Use your mouse scroll to change the scale of the visualizer screen
 - Press `space` to pause the visualizer
 - Use `R` to reset the visualizer configuration without restarting it
 - Use `M` to toggle the stats menu
-- Use `Q` to quit
-- Run the executable to use the software again
+- Press `Q` to quit
 
 ## Customization
 
@@ -110,4 +124,4 @@ brew install sfml
 - In the `cpp` file, change the `step` function to use your new attractor system
 - In the `cpp` file, experiment with the `speedfactor` formula
 
-Also check out this fun video on chaos attractors: https://www.youtube.com/watch?v=uzJXeluCKMs&t=251s
+Also check out this fun video on chaotic attractors: https://www.youtube.com/watch?v=uzJXeluCKMs&t=251s
